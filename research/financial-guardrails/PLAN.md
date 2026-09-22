@@ -127,8 +127,9 @@ benchmark content out of diagnostic logs.
 ## 4. Architecture and project isolation
 
 Build a separate research application that depends on a pinned NeMo version.
-This plan is stored in the current workspace for review; it does not propose
-changes to NeMo's runtime or an upstream contribution.
+Its project workspace is `research/financial-guardrails/`, with this plan in
+`PLAN.md` and the personal task list in `TODO.md`. This does not propose changes
+to NeMo's runtime or an upstream contribution.
 
 Keep upstream maintenance separate from experiments: fetch updates into maintenance
 branches, but run each experiment from an immutable commit/worktree and locked
@@ -139,6 +140,9 @@ Proposed application layout, to be created during implementation:
 
 ```text
 financial-guardrails/
+  README.md              # Project entry point
+  PLAN.md                # Execution and verification plan
+  TODO.md                # Personal tasks and completion checks
   policies/              # Sources, policy definitions, exceptions, mappings
   configs/               # NeMo configurations and experiment variants
   detectors/             # Rules, classifier adapters, decision aggregation
@@ -881,9 +885,9 @@ recorded checks specified above.
   error handling, and the distinction between reported access and verified access.
 - Checked the original Markdown file with Git's no-index whitespace check and the
   revised file with `git diff --check`.
-- Attempted the repository-required `uv run --locked pre-commit run --files
-  FINANCIAL_GUARDRAILS_PROJECT_PLAN.md`; it could not run because `uv` is unavailable
-  in this environment. Pre-commit validation remains outstanding.
+- Attempted the repository-required pre-commit checks, including after moving the
+  documents to `research/financial-guardrails/`; they could not run because `uv` is
+  unavailable in this environment. Pre-commit validation remains outstanding.
 - No application behavior or public documentation site was changed; no benchmark
   results, live API health, or cluster readiness are claimed by these document checks.
 
