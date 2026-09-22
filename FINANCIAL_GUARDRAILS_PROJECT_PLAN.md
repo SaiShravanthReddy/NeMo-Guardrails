@@ -35,7 +35,7 @@ change labels, omit records, or claim success.
 | Resource | Evidence available | Required verification before use |
 | --- | --- | --- |
 | NeMo Guardrails | Current local repository and public documentation | Pin the selected release or commit and match its APIs/configuration to that version |
-| HiPerGator | User reports access; supplied HIPERGATOR.md records an iruchkin allocation | Current account/QoS, allocated GPU, writable storage, Python/CUDA compatibility |
+| HiPerGator | User supplied live allocation/association output for iruchkin and sa.madem | Per-job scheduling limits, allocated GPU, writable storage, Python/CUDA compatibility |
 | Navigator | User reports $25/week; supplied NAVIGATOR.md records a team model allowlist | Exact credential/model combination, billing source, remaining credit, real completion |
 | CNFinBench and FinVault | User will supply data | Dataset identity, version, schema, language, license, task, labels, splits, official scorer |
 | Local models | Public model cards and weights | License, pinned revision, downloads, supported runtime, actual inference behavior |
@@ -60,10 +60,33 @@ generation and judging. The supplied files may be subsets or converted exports.
 Establish their provenance before calling an experiment an official benchmark run.
 [S14, S15]
 
-UF documents no burst QoS for GPUs. The user's recorded L4 configuration is
+UF documents no burst QoS for GPUs. Use the user-selected GPU partition `hpg-turin`
+for this project, with the initial single-GPU configuration
 `--account=iruchkin --qos=iruchkin --partition=hpg-turin --gres=gpu:1`.
-Validate it against current account access before submission; do not assume access
-to larger GPUs because they appear in the cluster catalog. [S10]
+Do not substitute B200 or RTX6000 partitions without a change to this instruction.
+Use CPU-only allocations for work that does not need a GPU. [S10]
+
+User-supplied scheduler snapshot, recorded during planning on 2026-09-22:
+
+| Scope | Observed value |
+| --- | --- |
+| Group investment QoS | `iruchkin`: 96 CPU cores, 750 GB RAM, 24 GPUs |
+| QoS time limit displayed | 744 hours (31 days); not proof of the effective GPU job limit |
+| User association | `sa.madem` in `iruchkin`; default QoS `iruchkin`; also `iruchkin-b` |
+| Group GPU usage | 7 running, 4 pending |
+| Group investment CPU/RAM usage | 36 cores / 278 GB running; 20 cores / 400 GB pending |
+| Turin node capacity | 96 CPU cores, 752 GB RAM; L4 GPU feature |
+| Cluster-wide Turin GPU usage | 271 of 585 L4 GPUs in use at the time of the snapshot |
+
+These are shared group limits and transient usage figures, not resources reserved
+for this project. Pending requests are not running allocations, and idle GPUs
+cluster-wide do not guarantee that a job can start. The 24-GPU group limit does not
+mean 24 GPUs on one node or 24 GB of total VRAM. Public hardware documentation lists
+24 GB per L4; confirm actual device memory inside the first allocated job. [S10]
+
+Start with one GPU and measure memory/throughput before increasing resources.
+This snapshot establishes the reported account association and selected partition,
+but does not resolve the separate persistent-storage quota warning above.
 
 ## 3. Working method: every task ends with a verification record
 
@@ -749,6 +772,11 @@ GPU jobs, subject to actual account/partition limits. Use short interactive chec
 and pilot-sized batch shards with walltime headroom, not maximum-duration jobs by
 default. Handle scheduler termination signals and checkpoint well before the limit.
 SLURM exit status and valid result counts must both indicate completion. [S10]
+The supplied allocation summary displays a 744-hour QoS limit; partition and other
+scheduler limits can be stricter. Before choosing a long walltime, inspect the
+current partition and QoS settings (for example, `scontrol show partition hpg-turin`
+and `sacctmgr show qos iruchkin format=Name,MaxWall`) and validate the actual job
+request. Do not infer a 31-day GPU allowance from the allocation summary alone.
 
 ## 10. Mandatory checklist before a large run
 
