@@ -3,6 +3,11 @@
 Draft date: 2026-09-22. Status: planning document; no cluster jobs, model downloads,
 API validation calls, training, or benchmark runs have been performed for this plan.
 
+Review status: revised after checking public benchmark documentation and the local
+NeMo code at upstream revision `71487baab`. The implementation route below is a
+starting hypothesis; dataset-specific correctness and model quality still require
+the gates in this document.
+
 ## 1. Objective and scope
 
 Derive explicit security policies from Lakera's public documentation, implement
@@ -49,6 +54,12 @@ The HiPerGator notes report `/blue/iruchkin` full on 2026-09-16. Its current sta
 unknown. A successful tiny write does not prove enough capacity for a full run:
 check group byte quota, file quota, and projected peak usage as well.
 
+Public benchmark documentation is available even though the user's files have not
+arrived. FinVault requires an executable sandbox; CNFinBench includes multi-turn
+generation and judging. The supplied files may be subsets or converted exports.
+Establish their provenance before calling an experiment an official benchmark run.
+[S14, S15]
+
 UF documents no burst QoS for GPUs. The user's recorded L4 configuration is
 `--account=iruchkin --qos=iruchkin --partition=hpg-turin --gres=gpu:1`.
 Validate it against current account access before submission; do not assume access
@@ -59,8 +70,8 @@ to larger GPUs because they appear in the cluster catalog. [S10]
 Maintain a task ledger. Each task has an identifier, dependencies, intended change,
 verification procedure, evidence location, status, and next action.
 
-Allowed statuses: `not_started`, `in_progress`, `passed`, `failed`, `blocked`.
-Use `not_applicable` only with a written explanation and reviewed scope decision.
+Allowed statuses: `not_started`, `in_progress`, `passed`, `failed`, `blocked`,
+`not_applicable`. Use the last only with a written scope justification.
 An unperformed check is never marked passed.
 
 For every task:
@@ -76,9 +87,9 @@ For every task:
 Example ledger entry:
 
 ```yaml
-task_id: T05_api_preflight
+task_id: T05
 status: not_started
-depends_on: [T02_resources, T04_environment]
+depends_on: [T02, T04]
 expected: valid structured response from each selected Navigator model
 evidence: null
 verified_at_utc: null
@@ -95,6 +106,11 @@ benchmark content out of diagnostic logs.
 Build a separate research application that depends on a pinned NeMo version.
 This plan is stored in the current workspace for review; it does not propose
 changes to NeMo's runtime or an upstream contribution.
+
+Keep upstream maintenance separate from experiments: fetch updates into maintenance
+branches, but run each experiment from an immutable commit/worktree and locked
+environment. Never pull into a running job's checkout. Adopt an upstream update
+only after the relevant compatibility smoke tests pass, with a new run manifest.
 
 Proposed application layout, to be created during implementation:
 
@@ -124,6 +140,27 @@ Assistant response -> output checks -> user
 NeMo coordinates supported rails and custom actions. Some authorization checks
 must live in the application/tool wrapper. Confirm support in the pinned NeMo
 engine; do not assume every engine supports every rail type. [S4]
+
+Prefer a thin adapter around each benchmark's existing runner so its prompts,
+conversation loop, tools, and scoring remain comparable. Start with NeMo's
+rails-only `check_async` for explicit input/output checks, with a persistent engine
+instance. It does not generate an assistant answer, but configured checks can still
+call detector models. It also does not execute tool rails: tool validation must be
+invoked at the actual tool boundary, before any side effect. [S16]
+
+Choose the engine after a small compatibility test. `LLMRails` is the initial
+candidate when Python custom actions or retrieval rails are required; `IORails`
+is worth testing for configurations entirely supported by its built-in interfaces.
+Do not mix custom-action assumptions with IORails-only per-tool configuration.
+The inspected local docs disagree in places about generic tool support, so verify
+the pinned code path and a blocked-tool test rather than relying on a summary table.
+
+Keep dependencies narrow. Local HF classification needs its local ML dependencies;
+Presidio needs its optional packages and a suitable language model. A local
+OpenAI-compatible model endpoint does not require a paid OpenAI API key. Use NeMo's
+default compatible-provider path initially; add LangChain only if the benchmark
+adapter needs it. Verify provider routing and detector-only checks do not initialize
+or call an unintended default model.
 
 The initial version buffers complete responses before release. Streaming needs a
 separate security design and tests to prevent sensitive prefixes escaping before
@@ -156,6 +193,12 @@ Implementations below are project design proposals, not statements of Lakera int
 | TOOL-01 | Prevent actions outside the user's permissions | Trusted identity/permission state and argument validation | Authorized read-only query |
 | FIN-01+ | Apply application-specific financial restrictions | Custom rules/classifiers | Legitimate analytical or educational task |
 
+Specify the threat model alongside this registry: which actors control user turns,
+documents, tool descriptions, and tool results; which application state is trusted;
+and what data/actions each identity may access. Text claiming manager approval must
+never become a trusted permission. Check authorization and scenario constraints at
+execution time, not only against the wording of a request.
+
 Do not label all financial advice, all PII mentions, or all references to crime as
 forbidden by default. Define application requirements first. A disclaimer is not
 proof that an otherwise harmful answer is safe.
@@ -163,6 +206,11 @@ proof that an otherwise harmful answer is safe.
 PII presence and unauthorized disclosure are different labels. Enforcement depends
 on provenance, destination, identity, and policy. Access controls should keep
 unnecessary secrets out of prompts in the first place.
+
+The default English Presidio setup does not establish Chinese coverage. Select and
+test language-appropriate recognizers, local identifier formats, and public/private
+entity distinctions. For known secrets, test exact, normalized, and encoded forms;
+report paraphrased or fragmented leakage that string-based checks cannot detect.
 
 URL allowlisting is narrower than malicious-link intelligence. Treat unknown URLs
 as unknown or policy-disallowed, not proven malicious. Verify parsed hostnames,
@@ -176,6 +224,12 @@ from the implementation. No policy advances with an undefined enforcement outcom
 
 Select models by role. Keep the target assistant, deployed detector, development
 annotation model, and evaluation judge conceptually separate.
+
+Do not deploy the entire candidate list at once. Start with one target, rules, and
+one small safety detector. Add an injection detector for injection coverage, and
+add a larger model or fine-tuning only when development errors justify it. Keep
+custom financial-policy classification in scope; a transparent lightweight
+classifier is a valid first implementation, without training a transformer.
 
 ### 6.1 Target assistant: Qwen/Qwen3-4B
 
@@ -191,15 +245,27 @@ or make an already refusing model appear secure. Measure unguarded utility and
 attack success first. If inadequate, select a larger target on development data.
 Use an additional Navigator target to test whether protection generalizes.
 
+Qwen3-4B is a local candidate, not a prerequisite for the first experiment. If
+HiPerGator storage or GPU queues delay setup, use a verified Navigator target to
+validate the benchmark adapter first. Select the final target only after a benign
+task and tool-call capability pilot. Record tool schemas, argument validity, and
+multi-step completion; malformed calls must not masquerade as successful defense.
+
 ### 6.2 General moderation: Qwen3Guard-Gen-0.6B and Qwen3Guard-Gen-4B
 
-Compare these two local candidates. They are specialized prompt/response moderation
-models with multilingual coverage and Apache-2.0 licensing. [S6]
+Start with 0.6B; compare 4B only if development results warrant it. They are
+specialized prompt/response moderation models with multilingual coverage and
+Apache-2.0 licensing. [S6]
 
 The 0.6B model is the throughput baseline; 4B is a candidate for improved handling
 of context. Larger size is not evidence of better performance on our policies.
 Follow the model's documented prompt and response templates, parse its finite
 label set strictly, and map categories explicitly to our policy registry.
+
+Qwen3Guard-Gen is a generative model. Use a dedicated generation/parser adapter
+following its model card; it is not a drop-in `text-classification` pipeline that
+returns `label`/`score` dictionaries. Bound generated tokens, distinguish reasoning
+from final labels, and reject empty/unrecognized results as detector errors.
 
 Its safety taxonomy is not Lakera's taxonomy. It does not establish full injection,
 financial-policy, authorization, or leakage coverage. Do not reinterpret categorical
@@ -225,6 +291,19 @@ classifier as pending and retain the pretrained/rules baseline.
 An English-only Protect AI DeBERTa injection model can serve as a restricted
 baseline, not the primary multilingual defense. Its card reports that it does not
 cover non-English prompts or jailbreaks and that the project is archived. [S8]
+
+For a pretrained injection candidate, test `meta-llama/Llama-Prompt-Guard-2-86M`
+before investing in custom transformer training. Its 512-token binary classifier
+targets explicit instruction overrides and is much smaller than a generative
+judge. Its card describes multilingual training, but the reported evaluation
+languages do not include Chinese. Treat Chinese performance as unverified. Access
+is gated and its Llama 4 license is not Apache-2.0; use only if access and terms fit
+the project. Do not let this optional dependency block the rules baseline. [S17]
+
+For any chunked detector, preserve original offsets/roles, overlap boundaries, and
+evaluate attacks split across chunks. Calibrate the document-level decision because
+taking the maximum over many chunks can increase false positives. Cross-turn
+attacks require conversation context; chunking individual turns does not solve them.
 
 ### 6.4 Navigator reviewer: gpt-oss-120b
 
@@ -261,6 +340,23 @@ a model universally best. Reopen selection only when new evidence justifies it.
 Each phase produces a verification record under Section 3. Dependent phases wait
 for their gate; independent documentation/test preparation may continue.
 
+### Recommended order and minimum first milestone
+
+The task numbers identify work packages, not a requirement to finish every optional
+component in sequence. Begin with T01–T03 and the environment/preflight needed for
+the chosen route, then T06–T07 and a smoke run. T08 transformer training follows
+baseline error analysis; it does not precede the first working experiment.
+
+The first milestone is one unguarded and one guarded benign/attack pair in a
+FinVault sandbox, plus one complete CNFinBench dialogue with a checked score, if
+those are the versions supplied. Use separate development fixtures when official
+examples must remain held out. Prove integration before scaling sample counts.
+
+For local-only runs, Navigator gates are not applicable. For an API-backed target
+with CPU rules, GPU/model-download gates are not applicable. Keep one small task
+ledger and one run manifest initially; add distributed scheduling or multiple
+concurrent writers only after a measured need.
+
 ### T01 — Dataset intake and experimental scope
 
 Actions:
@@ -275,6 +371,23 @@ Actions:
    official labels, and separate project policy annotations.
 6. Check duplicate and near-duplicate records across datasets/splits. Group variants
    by source/conversation/attack template to prevent leakage.
+
+Benchmark-specific contracts:
+
+- **FinVault:** the public release uses scenario environments, tools, mutable state,
+  and vulnerability checks. Preserve its executable harness and scoring; a JSON
+  export alone supports only a separate text-screening study. Reset sandbox state
+  for every case and variant, isolate concurrent cases, and inspect state/trace
+  evidence rather than treating a refusal as proof of a safe outcome. [S14]
+- **CNFinBench:** retain full dialogue history, attacker settings, turn limits, and
+  the applicable HICS rubric/scorer. Match the supplied version to its documentation;
+  public versions describe different task inventories. Replacing a prescribed judge
+  with an available local/Navigator model is an adapted protocol, not automatically
+  a leaderboard-comparable score. [S15]
+
+Do not inspect held-out answer labels to write policies. If there is no development
+split, reserve grouped development cases before tuning and report the reduced test
+set, or use separate external development data to preserve the full official test.
 
 Verification: reconcile original and loaded counts; round-trip sample records;
 inspect Unicode, multiline text, roles, and missing-value handling. Keep official
@@ -323,6 +436,10 @@ Do not modify the existing AgentAuditor environment or NeMo lockfile for this pr
 Record Python, NeMo, PyTorch, CUDA/driver, inference engine, and model revisions.
 Download/cache weights once using permitted cluster transfer methods.
 
+Separate optional GPU/model checks from basic runner setup so an API-target
+experiment can proceed without downloading every candidate. Reuse permitted shared
+caches where available; do not install packages or download models inside each shard.
+
 Verification:
 
 - Import all required packages and load NeMo configurations using the pinned version.
@@ -346,7 +463,7 @@ Check each model and each API feature actually required by the next run.
 | Credentials | Loaded securely; never printed; intended account/team confirmed |
 | Connectivity | DNS, TLS, and request timeout behavior work from compute node |
 | Model access | Actual completion succeeds for the exact model ID, not just `/models` |
-| Response | Nonempty final answer, valid expected schema, valid labels and finish reason |
+| Response | Expected text/labels for text checks, or valid tool calls for tool steps; a tool-only assistant message may legitimately have empty content |
 | Capabilities | Required JSON mode, tools, reasoning controls, or other parameters work; unsupported options are rejected or deliberately removed |
 | Task behavior | Small benign, violation, language, long-input, and structured-output examples parse correctly |
 | Usage/cost | Billable usage reconciles with gateway accounting; remaining credit known |
@@ -358,6 +475,12 @@ Before the next large run, repeat a minimal real completion per selected model.
 Revalidate after credential, endpoint, model, environment, or node-class changes.
 An API response can be structurally valid while semantically wrong: task evaluation
 is a separate gate.
+
+For a changed environment/model, run the full small capability check. For an
+unchanged configuration's next job, reuse its recorded capability results and run
+only cheap liveness, credential, quota, storage, and output-path checks. Verify
+every actual role: target, attacker, judge, and hosted detector, when used. A failed
+optional endpoint should disable that optional experiment, not block local work.
 
 Gate: timestamped API health artifact bound to the run configuration and a known
 spending limit. If usage accounting is missing, use a verified conservative bound
@@ -388,6 +511,18 @@ Verification: offline unit tests and small integration tests cover each action,
 rule boundary, label polarity, Unicode, error path, and block/redact/allow outcome.
 Verify a blocked tool is never called, a blocked response never reaches the user,
 and input-blocked cases do not accidentally invoke the target model.
+
+Do not assume built-in detector errors are always fail-closed. In the reviewed
+`nemoguardrails/library/hf_classifier/actions.py`, an empty classification result
+can warn and then return allowed. The project adapter must require valid expected
+labels/scores for sequence classification and fail explicitly otherwise. Empty NER
+entities can be a legitimate result, so validate by task type. Test this boundary
+without changing upstream code as part of the research application.
+
+Also assert that the intended rails ran. An empty requested rail list or a message
+shape that selects no checks can return passed without validating anything.
+Explicitly select input/output directions where supported, and test their recorded
+execution. Tool checks need separate execution evidence. [S16]
 
 Gate: fixtures pass and configuration loading is verified. Unit tests use mocks
 and never call live providers; paid/live preflight is a separate explicit command.
@@ -421,9 +556,12 @@ training/development. Inspect class balance, hard negatives, and per-language
 metrics. Check calibration if scores drive decisions. Compare to the simple baseline.
 
 Gate: frozen classifier artifact and decision record, or documented choice to
-proceed without custom training. Never repeatedly tune against final test scores.
+proceed with a lightweight custom policy classifier and defer transformer training.
+Never repeatedly tune against final test scores. If the requested custom-classifier
+deliverable cannot be completed for lack of labeled data, mark it incomplete rather
+than silently removing it from the project's definition of done.
 
-### T09 — Smoke run: roughly 20–50 development cases
+### T09 — Smoke run: one case first, then roughly 20–50 development cases
 
 Use a deliberately diverse fixture/sample covering each available category,
 language, interaction surface, expected action, and one long input. Size is a
@@ -439,9 +577,13 @@ recorded, and blocked cases have the intended execution trace.
 Gate: zero unexplained plumbing/scoring errors. Detection mistakes become explicit
 development findings, not hidden exceptions.
 
-### T10 — Pilot: roughly 200–500 development cases
+### T10 — Pilot: a bounded, representative development sample
 
-Use a fixed stratified sample, or an appropriately sized subset if data is small.
+Use a fixed stratified sample sized to the actual dataset and unit of evaluation.
+For a small multi-turn set, start with tens of complete conversations rather than
+consuming hundreds of test examples for development. For a large set, 200–500
+development cases can be appropriate. Count trajectories, model calls, and tokens
+separately: one agent case may require many target, attacker, guard, and judge calls.
 Cover benign financial tasks as well as attacks. Measure throughput, p50/p95 latency,
 peak VRAM/RAM, output size, API token usage, and retries at intended concurrency.
 
@@ -523,6 +665,18 @@ Use paired comparisons on the same items and confidence intervals, grouping by
 conversation/source when cases are correlated. Small pilots cannot establish rare
 failure rates. Zero observed failures is not proof of zero risk.
 
+For adaptive multi-turn attacks, use identical initial cases and attacker budgets
+across variants, but let the attacker respond to each variant's actual history.
+Freeze attacker model/settings and save trajectories. Replaying an attack developed
+against only one target is a different, static evaluation. Include attacker tokens,
+tool iterations, and judge tokens in cost projections and set per-case turn/call limits.
+
+Separate matched paired-case analysis from independence assumptions: regenerated
+trajectories may differ despite identical settings. Record seeds where supported,
+use a small repeated subset to estimate variability, and retain backend identifiers
+and timestamps for hosted aliases whose exact weights cannot be pinned. Do not
+claim bitwise reproducibility from temperature zero alone.
+
 Use official gold labels/scorers first. If a judge model is necessary, lock its rubric,
 hide experiment/model identities where practical, include random samples as well as
 disagreements in human review, and report judge-human agreement. Judge inputs are
@@ -558,8 +712,16 @@ all workers, experiments, and retries in a shared ledger. Reject launches whose
 projected usage exceeds remaining allocation. A reset must not trigger an automatic
 restart of an unfinished expensive run.
 
+Begin with one dispatcher and a durable local ledger; distribute only when needed.
+The estimate covers the whole trajectory, not just one completion. Request server-side
+spending limits where available; locally enforce the project cap regardless. When a
+shared team's balance cannot be queried reliably, reconcile manually and reduce
+the batch bound rather than assuming the entire weekly credit is untouched.
+
 Retry policy: bounded exponential backoff with jitter for genuinely transient
 timeouts, 429s, and selected 5xx errors. Start with at most three attempts per item.
+Honor `Retry-After`, cap elapsed retry time, and account for SDK retries inside this
+total so nested retry loops do not multiply calls.
 Do not retry 401/403, invalid parameters, quota exhaustion, or consistent schema
 errors indefinitely. A timed-out request may still be billed.
 
@@ -577,6 +739,17 @@ Write per-shard results atomically, maintain stable IDs, and resume only unfinis
 items. Preserve all attempts separately from the single selected final result.
 Bound log volume and checkpoint retention; avoid millions of tiny files.
 
+FinVault recovery requires more than resuming JSON lines: persist a verified
+sandbox checkpoint or restart the case from its clean initial state. Never replay
+a state-changing tool call blindly. Identify results by case, variant, replicate,
+and attempt; revalidate the trace/state before marking a resumed case complete.
+
+UF documents up to 12 hours for interactive GPU sessions and 14 days for scheduled
+GPU jobs, subject to actual account/partition limits. Use short interactive checks
+and pilot-sized batch shards with walltime headroom, not maximum-duration jobs by
+default. Handle scheduler termination signals and checkpoint well before the limit.
+SLURM exit status and valid result counts must both indicate completion. [S10]
+
 ## 10. Mandatory checklist before a large run
 
 Each item must have evidence or an explicit, justified not-applicable decision.
@@ -584,6 +757,8 @@ Each item must have evidence or an explicit, justified not-applicable decision.
 - [ ] Dataset identity, licensing, schemas, labels, splits, and hashes recorded.
 - [ ] Test data sealed from training, prompt tuning, and threshold selection.
 - [ ] Policies, examples, exceptions, enforcement, and scoring frozen.
+- [ ] Benchmark runner reproduced on a small example; any protocol changes labeled.
+- [ ] Sandbox resets/isolation and multi-turn history/attacker budgets validated where applicable.
 - [ ] Code, dependencies, model/tokenizer revisions, and configuration pinned.
 - [ ] Offline unit/integration tests and scorer fixtures pass.
 - [ ] Current group byte/file quota supports estimated peak usage with headroom.
@@ -598,6 +773,7 @@ Each item must have evidence or an explicit, justified not-applicable decision.
 - [ ] Credentials are available securely without appearing in logs or manifests.
 - [ ] Run ID, result paths, shard IDs, and completion criteria are unambiguous.
 - [ ] Small first shard will be inspected before remaining work is released.
+- [ ] Model/rail execution is observable; empty detector results cannot silently pass.
 
 The runner should enforce machine-checkable gates and exit nonzero with specific
 reasons when they fail. Bind gate artifacts to configuration hashes; stale success
@@ -609,7 +785,8 @@ Deliverables:
 
 1. Source-linked policy registry and documented implementation gaps.
 2. Dataset cards, loaders, official scorer adapters, and leakage audit.
-3. Versioned NeMo configuration, rules, model adapters, and optional trained classifiers.
+3. Versioned NeMo configuration, rules, model adapters, and custom policy classifiers;
+   transformer fine-tuning is optional if a simpler classifier meets the requirement.
 4. Offline tests, explicit live preflight, smoke/pilot runners, and resumable SLURM jobs.
 5. Manifests, budget ledger, validated per-item outputs, and aggregate reports.
 6. Model decision records with alternatives, measured evidence, licenses, and limitations.
@@ -653,6 +830,14 @@ Source references support documented capabilities, not unmeasured project perfor
   [gpt-oss-120b](https://docs.ai.it.ufl.edu/docs/navigator_models/models/oai-gpt-oss-120b/),
   and [Llama-3.3-70B](https://docs.ai.it.ufl.edu/docs/navigator_models/models/meta-llama-3.3-70b-instruct/)
   pricing; [catalog](https://docs.ai.it.ufl.edu/docs/navigator_models/).
+- **S14:** [FinVault public repository and execution instructions](https://github.com/aifinlab/FinVault).
+- **S15:** [CNFinBench public repository](https://github.com/VertiAIBench/CNFinBench)
+  and [multi-turn judge guide](https://github.com/VertiAIBench/CNFinBench/blob/main/multi-turn/judge/README_EN.md).
+- **S16:** Local code at `71487baab`: `nemoguardrails/guardrails/iorails.py`
+  (`check_async`, `_do_check`), `nemoguardrails/library/hf_classifier/actions.py`
+  (`_classify_and_check`), and the local `docs/reference/rail-engine-support.mdx`
+  and `docs/run-rails/using-python-apis/check-messages.mdx` documentation.
+- **S17:** [Llama Prompt Guard 2 86M model card](https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M).
 
 No source establishes current account health, available storage, model performance
 on the supplied datasets, or completed project validation. Those require the
@@ -666,9 +851,17 @@ recorded checks specified above.
   the model/documentation sources reviewed during this planning conversation.
 - Reviewed task gates, evaluation denominators, leakage controls, budget arithmetic,
   error handling, and the distinction between reported access and verified access.
-- Checked this new Markdown file for whitespace errors with Git's no-index check.
+- Checked the original Markdown file with Git's no-index whitespace check and the
+  revised file with `git diff --check`.
 - Attempted the repository-required `uv run --locked pre-commit run --files
   FINANCIAL_GUARDRAILS_PROJECT_PLAN.md`; it could not run because `uv` is unavailable
   in this environment. Pre-commit validation remains outstanding.
 - No application behavior or public documentation site was changed; no benchmark
   results, live API health, or cluster readiness are claimed by these document checks.
+
+Review corrections: added benchmark-native sandbox and dialogue requirements;
+made the first milestone smaller; moved transformer training after baseline analysis;
+distinguished generative moderation from sequence classification; added tests for
+empty classifier results, skipped rails, and valid tool-only responses; covered
+adaptive attack costs, stateful recovery, and immutable experiment checkouts.
+These changes correct the plan, not the underlying upstream runtime behavior.
