@@ -8,16 +8,17 @@ rails:
   output:
     flows:
       - financial check output
+  retrieval:
+    flows:
+      - financial check retrieval
+  tool_output:
+    flows:
+      - tool call validation
+  tool_input:
+    flows:
+      - tool result validation
 
 custom_data:
-  # These are project policies, not Lakera's proprietary settings or thresholds.
   financial_guardrails:
-    max_chars: 20000
-    redact_email: true
-    block_payment_cards: true
-    allowed_link_hosts:
-      - sec.gov
-      - www.sec.gov
-      - investor.gov
-      - www.investor.gov
-    protected_values: []
+    policy_file: ../policies/open_lakera_v1.yml
+    mode: enforce

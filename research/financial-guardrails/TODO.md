@@ -52,3 +52,20 @@ Full benchmark runs and transformer fine-tuning are not prerequisites for this t
 
 Keep completed tasks checked, add new tasks below the existing tasks, and record
 actual blockers without marking unperformed verification as passed.
+
+## 2. Expand the baseline into Open Lakera
+
+Status: implementation passed locally on 2026-09-23 with 65 offline tests.
+HiPerGator model execution and dataset-specific adapters remain externally gated.
+
+- [x] Add versioned machine-readable policy configuration.
+- [x] Add role-aware events and structured verdicts.
+- [x] Add deterministic aggregation and detect/enforce modes.
+- [x] Add retrieval, tool-call, tool-result, and output boundary checks.
+- [x] Add agent permissions, resource scope, confirmations, and destructive-action denial.
+- [x] Add optional pinned local-model interfaces and failure tests.
+- [x] Add claim-level coverage, architecture, hook, and model documentation.
+- [x] Add direct/NeMo equivalence and end-to-end smoke verification.
+- [ ] Run selected model weights on `hpg-turin` and record measured memory, latency,
+  and fixture quality. Requires HiPerGator access during execution.
+- [ ] Build CNFinBench and FinVault adapters after the dataset files are supplied.

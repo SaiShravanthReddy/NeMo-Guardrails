@@ -1,0 +1,29 @@
+schema_version: "1.0"
+models:
+  prompt_injection:
+    model_id: protectai/deberta-v3-base-prompt-injection-v2
+    revision: 90c9989b1a342275dd0d1a95aad283c04e075671
+    license: Apache-2.0
+    languages: [en]
+    parameters: 200000000
+    weights_bytes: 738000000
+    recommended_hardware: CPU or one hpg-turin L4
+    minimum_estimated_ram_gb: 4
+    purpose: binary prompt-injection classification
+  content_safety:
+    model_id: Qwen/Qwen3Guard-Gen-0.6B
+    revision: fada3b2f655b89601929198343c94cd2f64d93cc
+    license: Apache-2.0
+    languages: multilingual-119
+    parameters: 800000000
+    weights_bytes_estimate_bf16: 1600000000
+    recommended_hardware: one hpg-turin L4
+    minimum_estimated_ram_gb: 6
+    purpose: multilingual input and output safety classification
+
+selection_notes:
+  - Both models run locally and require no paid API.
+  - DeBERTa is the smaller specialized injection detector and can run on CPU.
+  - Qwen3Guard covers English, Chinese, and broad safety categories but is generative and slower.
+  - RAM values are conservative planning estimates, not measurements from this repository.
+  - Model thresholds and labels must be calibrated on development data before benchmark claims.
