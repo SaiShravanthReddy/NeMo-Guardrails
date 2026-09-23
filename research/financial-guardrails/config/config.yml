@@ -1,0 +1,23 @@
+colang_version: "1.0"
+models: []
+instructions: []
+rails:
+  input:
+    flows:
+      - financial check input
+  output:
+    flows:
+      - financial check output
+
+custom_data:
+  # These are project policies, not Lakera's proprietary settings or thresholds.
+  financial_guardrails:
+    max_chars: 20000
+    redact_email: true
+    block_payment_cards: true
+    allowed_link_hosts:
+      - sec.gov
+      - www.sec.gov
+      - investor.gov
+      - www.investor.gov
+    protected_values: []
