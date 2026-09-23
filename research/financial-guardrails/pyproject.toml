@@ -1,0 +1,29 @@
+[project]
+name = "financial-guardrails"
+version = "0.1.0"
+description = "Offline Lakera-inspired policies for NeMo Guardrails"
+requires-python = ">=3.11,<3.14"
+dependencies = ["nemoguardrails==0.24.1"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+nemoguardrails = { path = "../..", editable = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0.3,<10",
+  "pytest-asyncio>=1.4,<2",
+  "pre-commit>=3.1.1,<5",
+  "ruff==0.16.0",
+  "ty==0.0.56",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.ty.src]
+include = ["financial_guardrails", "config", "tests"]

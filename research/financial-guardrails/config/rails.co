@@ -1,0 +1,23 @@
+define bot financial policy refusal
+  "I cannot provide that content under this application's security policy."
+
+define bot financial check unavailable
+  "The security check is unavailable. Please try again later."
+
+define subflow financial check input
+  $verdict = execute screen_financial_text(text=$user_message, direction="input")
+  if $verdict == "error"
+    bot financial check unavailable
+    stop
+  if $verdict == "block"
+    bot financial policy refusal
+    stop
+
+define subflow financial check output
+  $verdict = execute screen_financial_text(text=$bot_message, direction="output")
+  if $verdict == "error"
+    bot financial check unavailable
+    stop
+  if $verdict == "block"
+    bot financial policy refusal
+    stop
