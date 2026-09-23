@@ -3,7 +3,14 @@ name = "financial-guardrails"
 version = "0.1.0"
 description = "Offline Lakera-inspired policies for NeMo Guardrails"
 requires-python = ">=3.11,<3.14"
-dependencies = ["nemoguardrails==0.24.1"]
+dependencies = ["nemoguardrails==0.24.1", "pyyaml>=6.0.2,<7"]
+
+[project.optional-dependencies]
+local-models = [
+  "accelerate>=1.10,<2",
+  "torch>=2.6,<3",
+  "transformers>=4.55,<5",
+]
 
 [tool.uv]
 package = false

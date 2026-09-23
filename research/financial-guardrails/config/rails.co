@@ -4,20 +4,32 @@ define bot financial policy refusal
 define bot financial check unavailable
   "The security check is unavailable. Please try again later."
 
+define bot financial confirmation required
+  "This action requires confirmation from a trusted application control."
+
 define subflow financial check input
   $verdict = execute screen_financial_text(text=$user_message, direction="input")
-  if $verdict == "error"
-    bot financial check unavailable
-    stop
   if $verdict == "block"
     bot financial policy refusal
+    stop
+  if $verdict == "require_confirmation"
+    bot financial confirmation required
     stop
 
 define subflow financial check output
   $verdict = execute screen_financial_text(text=$bot_message, direction="output")
-  if $verdict == "error"
-    bot financial check unavailable
-    stop
   if $verdict == "block"
     bot financial policy refusal
+    stop
+  if $verdict == "require_confirmation"
+    bot financial confirmation required
+    stop
+
+define subflow financial check retrieval
+  $verdict = execute screen_financial_text(text=$relevant_chunks, direction="retrieval")
+  if $verdict == "block"
+    bot financial policy refusal
+    stop
+  if $verdict == "require_confirmation"
+    bot financial confirmation required
     stop

@@ -13,9 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Research guardrails; use FinancialGuard to validate content before releasing it."""
+from financial_guardrails.audit import InMemoryAuditSink
+from financial_guardrails.integration import FinancialGuard
+from financial_guardrails.schema import Mode
 
-from financial_guardrails.integration import FinancialGuard, GuardUnavailable
-from financial_guardrails.schema import Decision, Mode, SecurityEvent, Verdict
 
-__all__ = ["Decision", "FinancialGuard", "GuardUnavailable", "Mode", "SecurityEvent", "Verdict"]
+async def test_detect_mode_records_without_raw_content():
+    secret = "api_key=abcdefghijklmnop"
+    sink = InMemoryAuditSink()
+    guard = FinancialGuard(mode=Mode.DETECT, audit_sink=sink)
+
+    verdict = await guard.check(secret, "output")
+
+    assert verdict.decision.value == "log_only"
+    assert verdict.recommended_decision.value == "block"
+    assert len(sink.records) == 1
+    assert secret not in str(sink.records)
+    assert "content" not in sink.records[0]

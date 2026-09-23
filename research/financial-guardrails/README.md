@@ -1,19 +1,22 @@
-# Financial Guardrails Research
+# Open Lakera for NeMo Guardrails
 
 Implement policies derived from Lakera's public documentation with NeMo Guardrails,
-local models, rules, and custom classifiers. Evaluate the result on CNFinBench and
-FinVault using HiPerGator and the available Navigator credit.
+local models, rules, and custom classifiers. The core pipeline uses no paid APIs.
+Future evaluation will use CNFinBench and FinVault after their files are supplied.
 
 ## Project documents
 
 - [Execution plan](PLAN.md): architecture, model candidates, evaluation design,
   resource constraints, and verification gates.
 - [Personal TODO](TODO.md): current tasks, prerequisites, and completion checks.
+- [Architecture](ARCHITECTURE.md): event/verdict contracts, precedence, modes, and failures.
+- [NeMo hooks](NEMO_HOOKS.md): exact supported integration points and limitations.
+- [Model decision](MODELS.md): pinned optional models, licenses, size, and hardware.
 
-The first offline guardrail configuration is implemented. It uses deterministic
-rules and custom NeMo actions, makes no provider calls, and fails closed when a
-required check does not run. It is a transparent baseline for later model-backed
-detectors and benchmark evaluation; no benchmark results have been produced yet.
+The implementation includes deterministic defenses, versioned policies, role-aware
+events, structured verdicts, detect/enforce modes, custom NeMo actions, retrieval
+screening, and a guarded tool boundary. Optional local-model adapters are disabled
+by default. No benchmark results have been produced.
 
 ## Run the offline baseline
 
@@ -30,14 +33,26 @@ Colang rails are in [`config/rails.co`](config/rails.co), and the implementation
 in [`financial_guardrails/`](financial_guardrails/). The source-linked behavior and
 known gaps are recorded in [`policies/POLICY_MAPPING.md`](policies/POLICY_MAPPING.md).
 
-`FIN_GUARD_PROTECTED_VALUES` may contain a JSON list of secret canaries or other
+`OPEN_LAKERA_PROTECTED_VALUES` may contain a JSON list of secret canaries or other
 application-owned values that must never be released. Keep real values in the
 environment; do not add them to `config.yml` or version control.
 
-This baseline supports buffered text and an example read-only tool boundary. Its
-rules recognize selected explicit English and Chinese attacks. It is not a general
-semantic moderation model, a complete PII detector, or a substitute for application
-authentication and authorization. See the policy mapping before deployment.
+Detect mode records metadata and preserves content:
+
+```python
+from financial_guardrails import FinancialGuard, Mode
+
+guard = FinancialGuard(mode=Mode.DETECT)
+```
+
+Install the optional model runtime with `uv sync --locked --extra local-models`.
+Runtime adapters only load pinned files already present in the local Hugging Face
+cache. Downloading, GPU validation, and calibration are separate explicit steps;
+the rules-only test suite never downloads weights or calls hosted inference.
+
+This project buffers complete text. It is not a complete PII product, URL reputation
+service, or substitute for host authentication and authorization. Review the
+coverage matrix before deployment.
 
 ## Organization
 

@@ -13,18 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Example read-only tool boundary, with authorization supplied by trusted code."""
+"""Application-owned enforcement hooks for tool calls and tool results."""
 
 from __future__ import annotations
 
-import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 
 from financial_guardrails.integration import FinancialGuard
+from financial_guardrails.schema import Decision, SecurityEvent, SourceRole, Surface, TrustLevel
 
 
 class ToolDenied(PermissionError):
+    pass
+
+
+class ToolConfirmationRequired(PermissionError):
     pass
 
 
@@ -35,34 +40,71 @@ class Principal:
     permissions: frozenset[str]
 
 
-class AccountTools:
-    """Only a read-only lookup is enabled; all other tool names are denied."""
+class GuardedTools:
+    def __init__(
+        self,
+        guard: FinancialGuard,
+        tools: dict[str, Callable[..., Awaitable[str]]],
+        confirmation_verifier: Callable[[tuple[str, ...], str, dict[str, Any], Principal], bool] | None = None,
+    ):
+        self.guard = guard
+        self.tools = tools
+        self.confirmation_verifier = confirmation_verifier
+
+    async def execute(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        principal: Principal,
+        confirmed_by: tuple[str, ...] = (),
+    ) -> str:
+        verified_confirmations = (
+            confirmed_by
+            if confirmed_by
+            and self.confirmation_verifier is not None
+            and self.confirmation_verifier(confirmed_by, name, arguments, principal)
+            else ()
+        )
+        call = SecurityEvent(
+            event_id="tool-call",
+            surface=Surface.TOOL_CALL,
+            source_role=SourceRole.ASSISTANT,
+            trust=TrustLevel.UNTRUSTED,
+            actor_id=principal.subject,
+            tool_name=name,
+            arguments=arguments,
+            permissions=principal.permissions,
+            allowed_resource_ids=principal.account_ids,
+            authorized_by_event_ids=verified_confirmations,
+        )
+        verdict = self.guard.evaluate(call)
+        if verdict.decision is Decision.REQUIRE_CONFIRMATION:
+            raise ToolConfirmationRequired("TOOL-CONFIRM: trusted confirmation required")
+        if verdict.decision is not Decision.ALLOW:
+            raise ToolDenied(f"tool denied by {','.join(verdict.policy_ids)}")
+        implementation = self.tools.get(name)
+        if implementation is None:
+            raise ToolDenied("tool implementation is unavailable")
+        result = await implementation(**arguments)
+        result_event = SecurityEvent(
+            event_id="tool-result",
+            surface=Surface.TOOL_RESULT,
+            source_role=SourceRole.TOOL,
+            trust=TrustLevel.UNTRUSTED,
+            content=result,
+            tool_name=name,
+        )
+        result_verdict = self.guard.evaluate(result_event)
+        if result_verdict.decision in (Decision.BLOCK, Decision.REQUIRE_CONFIRMATION):
+            raise ToolDenied(f"tool result denied by {','.join(result_verdict.policy_ids)}")
+        return result_verdict.content
+
+
+class AccountTools(GuardedTools):
+    """Compatibility wrapper for the original read-only example."""
 
     def __init__(self, guard: FinancialGuard, lookup: Callable[[str], Awaitable[str]]):
-        self.guard = guard
-        self.lookup = lookup
+        async def get_account_summary(account_id: str) -> str:
+            return await lookup(account_id)
 
-    async def execute(self, name: str, arguments: dict, principal: Principal) -> str:
-        if (
-            not principal.subject
-            or name != "get_account_summary"
-            or "account:read" not in principal.permissions
-            or not isinstance(arguments, dict)
-            or set(arguments) != {"account_id"}
-            or not isinstance(arguments["account_id"], str)
-            or arguments["account_id"] not in principal.account_ids
-        ):
-            raise ToolDenied("TOOL-01: tool or account access denied")
-        account_id = arguments["account_id"]
-        argument_check = await self.guard.check(json.dumps({"account_id": account_id}), "output")
-        if argument_check.decision != "allow":
-            raise ToolDenied("Tool arguments cannot be released")
-        result = await self.lookup(account_id)
-        # Tool results are untrusted input, then screened before release to a user/model.
-        input_check = await self.guard.check(result, "input")
-        if input_check.decision == "block":
-            raise ToolDenied("Tool result contains prohibited instructions or data")
-        output_check = await self.guard.check(input_check.content, "output")
-        if output_check.decision == "block":
-            raise ToolDenied("Tool result cannot be released")
-        return output_check.content
+        super().__init__(guard, {"get_account_summary": get_account_summary})

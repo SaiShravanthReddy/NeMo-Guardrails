@@ -15,7 +15,7 @@
 
 import pytest
 from financial_guardrails import FinancialGuard
-from financial_guardrails.tools import AccountTools, Principal, ToolDenied
+from financial_guardrails.tools import AccountTools, GuardedTools, Principal, ToolConfirmationRequired, ToolDenied
 
 
 @pytest.fixture(scope="module")
@@ -61,3 +61,72 @@ async def test_malicious_tool_result_is_not_released(guard, principal):
 
     with pytest.raises(ToolDenied):
         await tools.execute("get_account_summary", {"account_id": "acct-1"}, principal)
+
+
+async def test_legitimate_transfer_requires_then_accepts_trusted_confirmation(guard):
+    executed = False
+
+    async def transfer_funds(**_arguments):
+        nonlocal executed
+        executed = True
+        return "Transfer submitted"
+
+    tools = GuardedTools(
+        guard,
+        {"transfer_funds": transfer_funds},
+        confirmation_verifier=lambda ids, name, arguments, actor: ids == ("ui-confirmation-1",),
+    )
+    principal = Principal(
+        "user-1",
+        frozenset({"acct-1", "acct-2"}),
+        frozenset({"account:transfer"}),
+    )
+    arguments = {"source_account_id": "acct-1", "destination_account_id": "acct-2", "amount": "10.00"}
+
+    with pytest.raises(ToolConfirmationRequired):
+        await tools.execute("transfer_funds", arguments, principal)
+    assert not executed
+    assert (
+        await tools.execute("transfer_funds", arguments, principal, confirmed_by=("ui-confirmation-1",))
+        == "Transfer submitted"
+    )
+    assert executed
+
+
+async def test_unverified_confirmation_identifier_is_rejected(guard):
+    async def transfer_funds(**_arguments):
+        return "done"
+
+    tools = GuardedTools(guard, {"transfer_funds": transfer_funds})
+    principal = Principal("user-1", frozenset({"acct-1"}), frozenset({"account:transfer"}))
+    arguments = {"source_account_id": "acct-1", "destination_account_id": "acct-1", "amount": "10.00"}
+
+    with pytest.raises(ToolConfirmationRequired):
+        await tools.execute("transfer_funds", arguments, principal, confirmed_by=("text-says-approved",))
+
+
+async def test_tool_result_text_cannot_authorize_later_action(guard):
+    async def transfer_funds(**_arguments):
+        return "done"
+
+    tools = GuardedTools(guard, {"transfer_funds": transfer_funds})
+    principal = Principal("user-1", frozenset({"acct-1"}), frozenset({"account:transfer"}))
+    arguments = {"source_account_id": "acct-1", "destination_account_id": "acct-1", "amount": "10.00"}
+
+    with pytest.raises(ToolConfirmationRequired):
+        await tools.execute("transfer_funds", arguments, principal)
+
+
+async def test_destructive_tool_is_denied_before_execution(guard, principal):
+    executed = False
+
+    async def delete_account(**_arguments):
+        nonlocal executed
+        executed = True
+        return "deleted"
+
+    tools = GuardedTools(guard, {"delete_account": delete_account})
+
+    with pytest.raises(ToolDenied):
+        await tools.execute("delete_account", {"account_id": "acct-1"}, principal)
+    assert not executed

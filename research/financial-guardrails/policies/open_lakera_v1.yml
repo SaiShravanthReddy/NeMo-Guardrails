@@ -1,0 +1,55 @@
+schema_version: "1.0"
+policy_id: open-lakera
+policy_version: "1.0.0"
+default_mode: enforce
+
+limits:
+  max_chars: 20000
+
+data_loss_prevention:
+  redact_email: true
+  block_payment_cards: true
+  block_private_keys: true
+  protected_values: []
+
+links:
+  allowed_hosts:
+    - sec.gov
+    - www.sec.gov
+    - investor.gov
+    - www.investor.gov
+  denied_hosts: []
+
+tools:
+  allowed:
+    get_account_summary:
+      risk: low
+      required_permission: account:read
+      allowed_arguments: [account_id]
+    transfer_funds:
+      risk: high
+      required_permission: account:transfer
+      allowed_arguments: [source_account_id, destination_account_id, amount]
+    place_trade:
+      risk: high
+      required_permission: trade:place
+      allowed_arguments: [account_id, symbol, quantity, side]
+    export_report:
+      risk: high
+      required_permission: data:export
+      allowed_arguments: [account_id, destination_url]
+  confirmation_required:
+    - transfer_funds
+    - place_trade
+    - purchase
+  denied:
+    - change_permissions
+    - delete_account
+    - disable_security_control
+  external_transfer_arguments:
+    - destination_url
+    - recipient_email
+
+failure_policy:
+  high_impact: block
+  ordinary: require_confirmation

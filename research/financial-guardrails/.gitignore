@@ -5,6 +5,7 @@
 .ruff_cache/
 __pycache__/
 artifacts/
-models/
+models/*
+!models/local_models.yml
 data/
 outputs/
