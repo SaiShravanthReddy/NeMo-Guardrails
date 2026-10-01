@@ -110,3 +110,16 @@ def test_manifest_requires_timezone_aware_timestamps():
 
     with pytest.raises(ValidationError, match="timezone"):
         ExperimentManifest.model_validate(values)
+
+
+def test_manifest_accepts_nested_provider_generation_settings():
+    values = manifest().model_dump()
+    values["generation_settings"] = {
+        "max_tokens": 1024,
+        "response_format": {"type": "json_object"},
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+
+    parsed = ExperimentManifest.model_validate(values)
+
+    assert parsed.generation_settings["response_format"] == {"type": "json_object"}

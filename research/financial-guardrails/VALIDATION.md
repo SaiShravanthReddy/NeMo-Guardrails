@@ -110,9 +110,8 @@ Date: 2026-10-01
   detector failures. These are engineering checks of the runner, not final efficacy
   claims.
 - Completed rules-only full static replays over all 642 CNFinBench and 1,043
-  FinVault cases with no detector failures. FinVault flagged every case because
-  its recorded tools are not yet in the application allowlist. This correctly
-  exposes a policy-integration blocker and is not an efficacy result.
+  FinVault cases with no detector failures. The initial FinVault replay exposed
+  the missing benchmark tool policy; the reviewed 197-tool policy supersedes it.
 - The local readiness check verified dataset checksums, metadata, adapters, action
   parsing, the pinned Qwen revision, and both SLURM scripts.
 
@@ -143,3 +142,10 @@ The first login-node readiness retry incorrectly required `nvidia-smi`. HiPerGat
 provides that executable inside GPU allocations, so the login check now verifies
 `sbatch`, vLLM, and `ninja`; the GPU job remains responsible for verifying the
 allocated NVIDIA device before starting the server.
+
+The first NaviGator CNFinBench cascade completed inference but failed while creating
+its artifact because the manifest schema accepted only scalar generation settings;
+the backend uses a nested `response_format` object. The schema now accepts recursive
+JSON values and has a live-backend-shaped regression test. Explicit checkpoint and
+inference-commit options allow the completed content-free checkpoint to be finalized
+without repeating provider calls.
