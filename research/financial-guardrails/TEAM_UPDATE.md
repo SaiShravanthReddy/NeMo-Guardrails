@@ -1,0 +1,80 @@
+# Open Lakera / NeMo Guardrails: Team Update
+
+## Goal
+
+Build a zero-fee, Lakera-inspired guardrail layer in the NeMo Guardrails fork.
+The implementation is based on Lakera's public defense descriptions; it does
+not use the commercial Lakera API. This is an approximation, not a claim of
+commercial Lakera equivalence.
+
+## What is implemented
+
+- A shared Python policy engine used directly and through NeMo Guardrails.
+- NeMo configuration and Colang flows in [`config/`](config/).
+- Role-aware events that separate trusted system/user instructions from
+  untrusted retrieved text and tool results.
+- Structured verdicts: `allow`, `block`, `sanitize`,
+  `require_confirmation`, and `log_only`.
+- Deterministic policies for prompt injection and jailbreaks, harmful content,
+  PII/credentials/financial-data leakage, local URL rules, and risky tool use.
+- A frozen FinVault tool policy that classifies recorded tool calls without
+  executing them.
+- Detect and enforce modes, audit metadata without raw secrets, deterministic
+  decision precedence, and fail-closed detector errors.
+- Static replay evaluation for CNFinBench and FinVault. Recorded tool calls are
+  parsed and screened but never executed.
+
+The written policy mappings are in
+[`policies/POLICY_MAPPING.md`](policies/POLICY_MAPPING.md). The rules are in
+[`policies/open_lakera_v1.yml`](policies/open_lakera_v1.yml), the LLM-judge
+policy is in [`policies/llm_judge_v1.yml`](policies/llm_judge_v1.yml), and the
+FinVault policy is in [`policies/finvault_tools_v1.yml`](policies/finvault_tools_v1.yml).
+
+## Models, tools, and resources
+
+| Component | Use |
+| --- | --- |
+| NeMo Guardrails | Configuration, Colang flows, and custom Python action integration. |
+| Deterministic Python rules | Default CPU-capable guardrails; no model or API call is required. |
+| NaviGator `gpt-oss-120b` | Optional policy-reading LLM judge, using the available weekly NaviGator credit. |
+| `Qwen/Qwen3-8B-AWQ` | Optional local policy-reading LLM judge served with vLLM on HiPerGator. |
+| HiPerGator `hpg-turin` L4 GPU | Local Qwen inference. CPU nodes run rules-only evaluation and NaviGator requests. |
+| CNFinBench and FinVault v5 fixed | Static replay evaluation datasets. |
+
+Both LLM backends receive the same written judge policy and return the same
+structured verdict schema. The default profile remains rules-only.
+
+## Verified deterministic baseline results
+
+These are complete static-replay results for the Open Lakera/NeMo
+implementation. They are not commercial Lakera results.
+
+| Dataset | Cases | Detector errors | Accuracy | Precision | Recall | F1 | Specificity |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| CNFinBench pooled | 642 | 0 | 66.4% | 45.4% | 21.3% | 28.9% | 87.8% |
+| FinVault v5 fixed full | 1,043 | 0 | 67.9% | 63.8% | 85.7% | 73.2% | 49.2% |
+
+The deterministic baseline is intentionally conservative on known rule
+patterns. It has low CNFinBench recall and a high FinVault false-positive rate,
+which motivates testing the LLM judge rather than tuning against the full sets.
+
+## LLM-judge status
+
+- Both backends pass safe/attack two-case preflights.
+- Initial pilot runs exposed malformed structured judge responses. The judge
+  now makes one bounded repair attempt and still fails closed if the repaired
+  response is invalid.
+- Repaired local-Qwen pilots reduced failures but did not eliminate them
+  (CNFinBench: 2 of 48; FinVault: 17 of 64). Their scores are therefore
+  provisional and are not reported as results.
+- Repaired NaviGator pilots are currently running. We will inspect their
+  detector-error rate before selecting a backend or scheduling full LLM runs.
+
+## Next steps
+
+1. Finish the repaired NaviGator pilots and validate all result artifacts.
+2. Improve the remaining LLM-output reliability without weakening fail-closed
+   behavior; tune only on development/calibration splits.
+3. Run the selected valid judge configuration on held-out final splits, then
+   report deterministic and LLM-judge results separately with confidence
+   intervals and operational cost/latency metrics.
