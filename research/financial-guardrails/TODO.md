@@ -55,7 +55,7 @@ actual blockers without marking unperformed verification as passed.
 
 ## 2. Expand the baseline into Open Lakera
 
-Status: implementation passed locally on 2026-10-01 with 88 offline tests.
+Status: implementation passed locally on 2026-10-01 with 97 offline tests.
 The supplied datasets passed local readability, checksum, schema, and record-count
 checks. Dataset adapters are implemented; live HiPerGator model execution remains pending.
 
