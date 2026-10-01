@@ -155,3 +155,9 @@ but vLLM's FlashInfer child process could not resolve it because the isolated
 environment's `bin` directory was absent from `PATH`. Both GPU scripts now prepend
 that directory, verify `command -v ninja` resolves to the pinned executable, and run
 `ninja --version` before starting vLLM.
+
+The third local-model preflight (`44280869`) loaded Qwen3-8B-AWQ successfully and
+started vLLM. Its safe fixture then returned a syntactically valid but internally
+contradictory allow verdict, which the strict response validator rejected. The judge
+prompt now states the required allow fields explicitly, and both backends use
+deterministic sampling settings before the next two-fixture preflight.
