@@ -24,6 +24,9 @@ test -x "${VLLM_BIN}"
 test -x "${NINJA_BIN}"
 test -x "${PROJECT_PYTHON}"
 cd "${PROJECT_ROOT}"
+export PATH="${PROJECT_ROOT}/.venv-vllm/bin:${PATH}"
+test "$(command -v ninja)" = "${NINJA_BIN}"
+ninja --version
 
 export HF_HOME="${HF_HOME:-/blue/iruchkin/sa.madem/huggingface}"
 mkdir -p "${HF_HOME}"
