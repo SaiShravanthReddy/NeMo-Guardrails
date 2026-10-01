@@ -4,6 +4,8 @@ backends:
     base_url: https://api.ai.it.ufl.edu/v1
     model: gpt-oss-120b
     api_key_env: NAVIGATOR_TOOLKIT_API_KEY
+    input_cost_per_million_usd: 0.06
+    output_cost_per_million_usd: 0.15
     request_options:
       max_tokens: 1024
       response_format:
@@ -13,6 +15,8 @@ backends:
     model: Qwen/Qwen3-8B-AWQ
     # Pass this immutable Hugging Face revision when starting vLLM.
     revision: 4da05a8edb55c6046cce958586c33b61da07bb79
+    input_cost_per_million_usd: 0
+    output_cost_per_million_usd: 0
     request_options:
       max_tokens: 1024
       response_format:

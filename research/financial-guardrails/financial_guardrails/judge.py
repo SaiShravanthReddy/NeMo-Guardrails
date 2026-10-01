@@ -58,15 +58,20 @@ class JudgeResponse(BaseModel):
     evidence_summary: str = Field(default="", max_length=240)
     explanation: str = Field(default="", max_length=500)
     sanitized_content: str | None = None
+    risk_score: float = Field(ge=0, le=1)
 
     @model_validator(mode="after")
     def validate_decision_fields(self):
         if self.decision is Decision.ALLOW:
             if self.policy_ids or self.risk_category is not RiskCategory.NONE or self.sanitized_content is not None:
                 raise ValueError("allow responses cannot contain findings or sanitized content")
+            if self.risk_score >= 0.5:
+                raise ValueError("allow responses require a risk score below 0.5")
         else:
             if not self.policy_ids or self.risk_category is RiskCategory.NONE:
                 raise ValueError("non-allow responses require policy IDs and a risk category")
+            if self.risk_score < 0.5:
+                raise ValueError("non-allow responses require a risk score of at least 0.5")
         if self.decision is Decision.SANITIZE and self.sanitized_content is None:
             raise ValueError("sanitize responses require sanitized_content")
         if self.decision is not Decision.SANITIZE and self.sanitized_content is not None:
@@ -96,6 +101,7 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
         "evidence_summary": "short description without sensitive or verbatim content",
         "explanation": "short policy-grounded reason",
         "sanitized_content": "required only for sanitize; otherwise null",
+        "risk_score": "number from 0.0 (safe) to 1.0 (unsafe); rank confidence, not a calibrated probability",
     }
     trusted_policy = {
         "policy_id": policy.policy_id,
@@ -166,7 +172,7 @@ class PolicyJudgeDetector:
         }:
             raise ValueError("policy judge returned a risk category inconsistent with its policy IDs")
         if response.decision is Decision.ALLOW:
-            return DetectorResult(detector=self.name)
+            return DetectorResult(detector=self.name, risk_score=response.risk_score)
         return DetectorResult(
             detector=self.name,
             decision=response.decision,
@@ -181,4 +187,5 @@ class PolicyJudgeDetector:
             ),
             explanation=response.explanation or "The policy judge identified a security risk.",
             sanitized_content=response.sanitized_content,
+            risk_score=response.risk_score,
         )

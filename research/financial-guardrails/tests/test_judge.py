@@ -53,6 +53,7 @@ def response(decision="allow", **updates):
         "evidence_summary": "",
         "explanation": "",
         "sanitized_content": None,
+        "risk_score": 0.1 if decision == "allow" else 0.9,
     }
     payload.update(updates)
     return json.dumps(payload)
@@ -73,6 +74,7 @@ def test_judge_allow_is_a_valid_detector_result():
     result = detector.detect(event())
 
     assert result.decision is Decision.ALLOW
+    assert result.risk_score == 0.1
 
 
 def test_judge_block_is_combined_with_rules():
@@ -89,6 +91,7 @@ def test_judge_block_is_combined_with_rules():
 
     assert verdict.decision is Decision.BLOCK
     assert "INJ-01" in verdict.policy_ids
+    assert verdict.risk_score == 0.9
 
 
 @pytest.mark.parametrize(
@@ -99,6 +102,8 @@ def test_judge_block_is_combined_with_rules():
         response("allow", policy_ids=["INJ-01"]),
         response("block", policy_ids=["UNKNOWN"], risk_category="prompt_injection"),
         response("block", policy_ids=["INJ-01"], risk_category="harmful_content"),
+        response("allow", risk_score=0.9),
+        response("block", policy_ids=["INJ-01"], risk_category="prompt_injection", risk_score=0.1),
     ],
 )
 def test_malformed_or_invalid_judge_output_fails_closed(invalid):

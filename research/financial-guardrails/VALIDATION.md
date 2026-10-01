@@ -80,3 +80,21 @@ Date: 2026-10-01
 
 No NaviGator request, model download, GPU allocation, or benchmark inference was
 performed. The two live fixture preflights remain required before any pilot.
+
+## Metric collection update
+
+Date: 2026-10-01
+
+- Added a bounded `risk_score` to the judge contract and propagated it through
+  detector results and final verdicts. Decision/score inconsistencies fail closed.
+- Added classification, ranking, threshold, calibration, operations, slice, paired,
+  and grouped-bootstrap metrics without adding a statistics dependency.
+- Added content-free case telemetry and atomic run artifacts with strict manifests.
+- Added backend telemetry for latency, provider token usage, estimated NaviGator
+  cost, and sanitized failure codes.
+- Full offline project suite: 115 passed with nine upstream deprecation warnings.
+- Ruff, Ruff format, and ty passed on the changed Python files.
+
+No metric in this update is a benchmark result. Sanitization quality, task utility,
+authorization correctness, and attack prevention remain unavailable until their
+required ground truth or interactive environment exists.

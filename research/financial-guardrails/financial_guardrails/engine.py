@@ -120,6 +120,10 @@ class PolicyEngine:
             detector_error=any(result.status is DetectorStatus.ERROR for result in results),
             detector_statuses={result.detector: result.status for result in results},
             content=content,
+            risk_score=max(
+                (result.risk_score for result in results if result.risk_score is not None),
+                default=None,
+            ),
         )
 
     def _failure_decision(self, event: SecurityEvent) -> Decision:

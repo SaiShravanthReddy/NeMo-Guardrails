@@ -139,6 +139,7 @@ class DetectorResult(BaseModel):
     explanation: str = ""
     sanitized_content: str | None = None
     error_code: str | None = None
+    risk_score: float | None = Field(default=None, ge=0, le=1)
 
 
 class Verdict(BaseModel):
@@ -157,6 +158,7 @@ class Verdict(BaseModel):
     detector_error: bool
     detector_statuses: dict[str, DetectorStatus]
     content: str
+    risk_score: float | None = Field(default=None, ge=0, le=1)
 
     @property
     def intervened(self) -> bool:

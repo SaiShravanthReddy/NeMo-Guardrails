@@ -44,11 +44,15 @@ class FakeResponse:
 
 def test_shared_client_sends_bounded_chat_completion(monkeypatch):
     captured = {}
+    metrics = []
 
     def fake_urlopen(request, timeout):
         captured["request"] = request
         captured["timeout"] = timeout
-        body = {"choices": [{"message": {"content": '{"decision":"allow"}'}}]}
+        body = {
+            "choices": [{"message": {"content": '{"decision":"allow"}'}}],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 20},
+        }
         return FakeResponse(json.dumps(body).encode())
 
     monkeypatch.setattr(judge_backends, "urlopen", fake_urlopen)
@@ -58,9 +62,12 @@ def test_shared_client_sends_bounded_chat_completion(monkeypatch):
             base_url="https://judge.example/v1",
             model="test-model",
             request_options={"max_tokens": 100},
+            input_cost_per_million_usd=0.06,
+            output_cost_per_million_usd=0.15,
         ),
         api_key=SecretStr("secret-value"),
         request_timeout_seconds=7,
+        metrics_sink=metrics.append,
     )
 
     result = backend.complete("policy prompt")
@@ -75,6 +82,11 @@ def test_shared_client_sends_bounded_chat_completion(monkeypatch):
         "max_tokens": 100,
     }
     assert captured["timeout"] == 7
+    assert len(metrics) == 1
+    assert metrics[0].input_tokens == 100
+    assert metrics[0].output_tokens == 20
+    assert metrics[0].estimated_cost_usd == pytest.approx(0.000009)
+    assert metrics[0].failure_code is None
 
 
 @pytest.mark.parametrize("url", ["http://remote.example/v1", "file:///tmp/model", "not-a-url"])
@@ -109,6 +121,8 @@ def test_navigator_requires_credential(monkeypatch):
 
 
 def test_provider_error_does_not_expose_response_body(monkeypatch):
+    metrics = []
+
     def fail(*_args, **_kwargs):
         raise HTTPError(
             "https://judge.example/v1/chat/completions",
@@ -123,11 +137,14 @@ def test_provider_error_does_not_expose_response_body(monkeypatch):
         name="test",
         spec=JudgeBackendSpec(base_url="https://judge.example/v1", model="test-model"),
         api_key=None,
+        metrics_sink=metrics.append,
     )
 
     with pytest.raises(RuntimeError, match="judge backend request failed") as error:
         backend.complete("private benchmark content")
     assert "sensitive-record-value" not in str(error.value)
+    assert metrics[0].failure_code == "request_failed"
+    assert metrics[0].input_tokens is None
 
 
 def test_registry_rejects_unknown_fields(tmp_path):

@@ -16,6 +16,8 @@ leakage-safe splits, checkpoints, and pilots remain to be completed before evalu
 - [Model decision](MODELS.md): pinned optional models, licenses, size, and hardware.
 - [Judge runbook](JUDGE_RUNBOOK.md): selected NaviGator and HiPerGator backends,
   matched experiment conditions, and preflight commands.
+- [Metrics](METRICS.md): retained per-case fields, implemented metrics, uncertainty,
+  comparison methods, and metrics that need additional ground truth.
 
 The implementation includes deterministic defenses, versioned policies, role-aware
 events, structured verdicts, detect/enforce modes, custom NeMo actions, retrieval
