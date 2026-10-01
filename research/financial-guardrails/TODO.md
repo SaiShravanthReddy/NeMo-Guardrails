@@ -109,6 +109,8 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   execution coverage. FinVault currently flags every case because its benchmark
   tool vocabulary is absent from the application policy; do not interpret that
   run as efficacy or start its LLM evaluation until the tool policy is reviewed.
+- [x] Add an unattended NaviGator pilot job with live preflight gates, restart
+  checkpoints, 10% log milestones, and SLURM start/end/failure notifications.
 - [ ] Run NaviGator and HiPerGator preflight checks, then the LLM pilot. Review
   outputs before approving a full benchmark run.
 - [ ] Run the approved full evaluations and produce a reproducible aggregate report.
