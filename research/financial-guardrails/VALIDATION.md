@@ -56,3 +56,8 @@ Date: 2026-10-01
 
 No live LLM, external provider, model download, or benchmark evaluation was used in
 these checks. Selecting and validating the live judge remains pending.
+
+Source-converter review confirmed that label `1` is unsafe for both exports. It also
+confirmed that FinVault full label `0` combines benign and defended cases, while
+label `1` represents successful attacks. This prevents using the full label directly
+as an attack-attempt interception label without a separately documented derived view.

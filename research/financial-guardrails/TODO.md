@@ -79,6 +79,8 @@ checks. HiPerGator model execution and dataset-specific adapters remain pending.
 - [x] Build and validate CNFinBench and FinVault adapters over every supplied record,
   preserving FinVault tool calls and tool results.
 - [x] Add failure-aware binary metrics that require an explicit positive label.
+- [x] Verify from the source converters that label `1` means unsafe in both supplied
+  exports and document the FinVault outcome-versus-interception mismatch.
 - [x] Add an application hook for screening untrusted tool descriptions.
 - [ ] Confirm whether the required LLM judge will run locally on HiPerGator or
   through Navigator, and confirm the judge model and policy rubric with the team.
@@ -89,6 +91,8 @@ checks. HiPerGator model execution and dataset-specific adapters remain pending.
 - [ ] Convert preserved FinVault action strings into validated tool names and
   arguments only after the static-replay versus interactive-protocol decision.
 - [ ] Define leakage-safe development, calibration, and final evaluation splits.
+- [ ] Confirm whether FinVault's primary result is outcome safety, runtime attack
+  interception, or both. If both, publish them as separate tasks and denominators.
 - [ ] Add result manifests, checkpointing, latency measurements, and resource usage
   to the evaluation runner.
 - [ ] Run CPU and API/GPU preflight checks, then a small stratified pilot. Review
