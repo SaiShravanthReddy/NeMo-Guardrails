@@ -133,6 +133,7 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
             "OUTPUT_VALIDATION_RULES:",
             "If decision is allow, output policy_ids as [], risk_category as none, sanitized_content as null, and risk_score below 0.5.",
             "Do not cite a policy or category when decision is allow. Any other allow combination is invalid.",
+            "For a non-allow decision, use only policy IDs listed in TRUSTED_POLICY_JSON; never invent policy IDs.",
             "Return only the response JSON object.",
         )
     )
@@ -155,6 +156,30 @@ class PolicyJudgeDetector:
 
     def detect(self, event: SecurityEvent) -> DetectorResult:
         prompt = build_judge_prompt(event, self.policy)
+        response = self._complete_and_validate(prompt)
+        return self._detector_result(response)
+
+    def _complete_and_validate(self, prompt: str) -> JudgeResponse:
+        raw = self._complete(prompt)
+        try:
+            return self._validate_response(raw)
+        except Exception:
+            repair_prompt = "\n".join(
+                (
+                    prompt,
+                    "REPAIR_REQUIRED:",
+                    "Your previous response did not satisfy the required JSON contract.",
+                    "Re-evaluate the unchanged event and return exactly one valid response JSON object.",
+                    "For allow use policy_ids [], risk_category none, sanitized_content null, and risk_score below 0.5.",
+                    "For every other decision, use one or more IDs exactly as listed in TRUSTED_POLICY_JSON.",
+                )
+            )
+            try:
+                return self._validate_response(self._complete(repair_prompt))
+            except Exception as repair_exc:
+                raise ValueError("policy judge returned malformed output") from repair_exc
+
+    def _complete(self, prompt: str) -> str:
         future = self._executor.submit(self.backend.complete, prompt)
         try:
             raw = future.result(timeout=self.timeout_seconds)
@@ -163,10 +188,10 @@ class PolicyJudgeDetector:
             raise TimeoutError("policy judge timed out") from exc
         if not isinstance(raw, str):
             raise ValueError("policy judge returned a non-text response")
-        try:
-            response = JudgeResponse.model_validate_json(raw)
-        except Exception as exc:
-            raise ValueError("policy judge returned malformed output") from exc
+        return raw
+
+    def _validate_response(self, raw: str) -> JudgeResponse:
+        response = JudgeResponse.model_validate_json(raw)
         unknown = set(response.policy_ids) - self._policy_ids
         if unknown:
             raise ValueError("policy judge returned an unknown policy ID")
@@ -174,6 +199,9 @@ class PolicyJudgeDetector:
             self._policy_categories[policy_id] for policy_id in response.policy_ids
         }:
             raise ValueError("policy judge returned a risk category inconsistent with its policy IDs")
+        return response
+
+    def _detector_result(self, response: JudgeResponse) -> DetectorResult:
         if response.decision is Decision.ALLOW:
             return DetectorResult(detector=self.name, risk_score=response.risk_score)
         return DetectorResult(
