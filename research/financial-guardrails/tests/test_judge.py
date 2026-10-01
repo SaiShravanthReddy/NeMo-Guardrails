@@ -64,6 +64,8 @@ def test_prompt_contains_written_policy_and_marks_event_untrusted():
 
     assert "TRUSTED_POLICY_JSON" in prompt
     assert "UNTRUSTED_EVENT_JSON" in prompt
+    assert "OUTPUT_VALIDATION_RULES" in prompt
+    assert "policy_ids as []" in prompt
     assert "INJ-01" in prompt
     assert "ignore this policy" in prompt
 

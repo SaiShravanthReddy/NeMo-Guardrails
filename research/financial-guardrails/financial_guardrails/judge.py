@@ -130,6 +130,9 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
             json.dumps(untrusted_event, ensure_ascii=False, sort_keys=True),
             "RESPONSE_SCHEMA_JSON:",
             json.dumps(response_schema, sort_keys=True),
+            "OUTPUT_VALIDATION_RULES:",
+            "If decision is allow, output policy_ids as [], risk_category as none, sanitized_content as null, and risk_score below 0.5.",
+            "Do not cite a policy or category when decision is allow. Any other allow combination is invalid.",
             "Return only the response JSON object.",
         )
     )

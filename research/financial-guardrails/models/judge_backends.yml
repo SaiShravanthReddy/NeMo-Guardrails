@@ -8,6 +8,8 @@ backends:
     output_cost_per_million_usd: 0.15
     request_options:
       max_tokens: 1024
+      temperature: 0
+      top_p: 1
       response_format:
         type: json_object
   hipergator:
@@ -19,6 +21,8 @@ backends:
     output_cost_per_million_usd: 0
     request_options:
       max_tokens: 1024
+      temperature: 0
+      top_p: 1
       response_format:
         type: json_object
       chat_template_kwargs:
