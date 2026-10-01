@@ -25,6 +25,7 @@ import hashlib
 import json
 import platform
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -92,6 +93,7 @@ def main() -> None:
         judge_mode=args.judge_mode,
         backend_name=args.backend,
         checkpoint_path=args.output_dir / f"{run_id}.checkpoint.jsonl",
+        progress_sink=_MilestoneReporter(),
     )
     records = tuple(
         record.model_copy(update={"slices": {**record.slices, "split": assignment[record.case_id].split}})
@@ -151,6 +153,24 @@ def _sha256(path: Path) -> str:
 
 def _git_commit() -> str:
     return subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+
+class _MilestoneReporter:
+    def __init__(self) -> None:
+        self.last_percent = -10
+        self.started = time.monotonic()
+
+    def __call__(self, completed: int, total: int) -> None:
+        percent = completed * 100 // total
+        milestone = min(100, percent // 10 * 10)
+        if milestone <= self.last_percent and completed != total:
+            return
+        self.last_percent = milestone
+        elapsed = time.monotonic() - self.started
+        print(
+            f"PROGRESS {milestone}% ({completed}/{total} cases, elapsed {elapsed:.0f}s)",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

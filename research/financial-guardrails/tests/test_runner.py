@@ -39,3 +39,15 @@ def test_rules_runner_checkpoints_and_resumes(tmp_path):
     assert len(checkpoint.read_text().splitlines()) == 2
     assert first[0].prediction is True
     assert first[1].prediction is False
+
+
+def test_runner_reports_resumed_and_completed_progress(tmp_path):
+    updates = []
+    cases = (_case("one", "Hello"), _case("two", "Hello again"))
+    evaluate_cases(
+        cases,
+        judge_mode="rules_only",
+        checkpoint_path=tmp_path / "checkpoint.jsonl",
+        progress_sink=lambda completed, total: updates.append((completed, total)),
+    )
+    assert updates == [(0, 2), (1, 2), (2, 2)]

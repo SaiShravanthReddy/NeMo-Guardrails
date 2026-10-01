@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 import time
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 from financial_guardrails.datasets import BenchmarkCase
@@ -40,6 +40,7 @@ def evaluate_cases(
     judge_mode: str,
     backend_name: str = "rules_only",
     checkpoint_path: str | Path | None = None,
+    progress_sink: Callable[[int, int], None] | None = None,
 ) -> tuple[EvaluationRecord, ...]:
     if judge_mode not in {"rules_only", "all_events", "rules_first_cascade"}:
         raise ValueError("unsupported judge mode")
@@ -63,6 +64,9 @@ def evaluate_cases(
     ):
         raise ValueError("checkpoint configuration does not match this evaluation")
     records = list(existing.values())
+    completed = len(records)
+    if progress_sink:
+        progress_sink(completed, len(selected_cases))
     for case in selected_cases:
         if case.case_id in existing:
             continue
@@ -89,6 +93,9 @@ def evaluate_cases(
         records.append(record)
         if checkpoint:
             _append_checkpoint(checkpoint, record)
+        completed += 1
+        if progress_sink:
+            progress_sink(completed, len(selected_cases))
     return tuple(records)
 
 

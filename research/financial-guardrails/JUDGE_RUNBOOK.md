@@ -105,6 +105,14 @@ The recorded version must be `0.30.0`. If installation fails because of the
 compute node's CUDA driver or Python compatibility, stop and retain the full error;
 do not replace the pinned package during the experiment.
 
+### Unattended NaviGator pilots
+
+`slurm/navigator-pilots.sbatch` runs a live two-fixture preflight before each pilot,
+then runs the cascade and all-events CNFinBench pilot conditions. It stops on the
+first failure, checkpoints after every completed case, prints progress every 10%,
+and requests SLURM mail for job start, completion, or failure. Supply the email
+address at submission time; do not commit it or the API key.
+
 ## 4. First HiPerGator GPU preflight
 
 Create the log directory before submitting because SLURM opens log files before the
