@@ -1,0 +1,68 @@
+name: Sync Fork and Research Branch
+
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-fork-and-financial-guardrails
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'SaiShravanthReddy/NeMo-Guardrails'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out develop
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: develop
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
+
+      - name: Merge NVIDIA develop into fork develop
+        run: |
+          git remote add upstream https://github.com/NVIDIA-NeMo/Guardrails.git
+          git fetch --no-tags upstream develop
+          git merge --no-edit upstream/develop
+          git push origin develop
+
+      - name: Merge fork develop into the research branch
+        run: |
+          git fetch --no-tags origin research/financial-guardrails-plan
+          git switch --force-create research/financial-guardrails-plan \
+            --track origin/research/financial-guardrails-plan
+          git merge --no-edit origin/develop
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv
+        with:
+          cache-suffix: financial-guardrails
+
+      - name: Install Open Lakera dependencies
+        working-directory: research/financial-guardrails
+        run: uv sync --locked
+
+      - name: Test Open Lakera
+        working-directory: research/financial-guardrails
+        run: uv run --locked pytest -q
+
+      - name: Push the tested research branch
+        run: git push origin research/financial-guardrails-plan
