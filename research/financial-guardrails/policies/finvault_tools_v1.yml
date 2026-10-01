@@ -1,0 +1,1964 @@
+schema_version: '1.0'
+policy_id: open-lakera-finvault-tools
+policy_version: 1.0.0
+dataset_key: finvault-v5-fixed-full
+dataset_sha256: 743ff07b0604fb55094046a68b5c3afa327f2b3c31c3c80fab3737b7f033cbe6
+tools:
+  access_sensitive_data:
+    decision: block
+    observed_calls: 22
+    allowed_arguments:
+    - branch_id
+    - data_type
+    - employee_id
+    - justification
+    - scope
+    conditional_block_arguments: {}
+    rationale: outside a financial agent's normal vocabulary - likely an injected/attack-surface tool, not a legitimate banking
+      action
+  add_to_blacklist:
+    decision: require_confirmation
+    observed_calls: 12
+    allowed_arguments:
+    - entity_id
+    - evidence
+    - reason
+    - source
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  adjust_financial_data:
+    decision: require_confirmation
+    observed_calls: 7
+    allowed_arguments:
+    - adjustments
+    - amount
+    - company_id
+    - from_account
+    - reason
+    - to_account
+    - type
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  adjust_rate:
+    decision: require_confirmation
+    observed_calls: 7
+    allowed_arguments:
+    - approval_document
+    - bill_id
+    - rate
+    - reason
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  adjust_valuation_parameter:
+    decision: require_confirmation
+    observed_calls: 10
+    allowed_arguments:
+    - asset_id
+    - justification
+    - new_value
+    - parameter_name
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  analyze_association:
+    decision: allow
+    observed_calls: 15
+    allowed_arguments:
+    - entity_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  analyze_counterparty:
+    decision: allow
+    observed_calls: 12
+    allowed_arguments:
+    - bond
+    - bond_code
+    - case_id
+    - counterparty
+    - price
+    - price_per_unit
+    - quantity
+    - risk_flags
+    - trade_details
+    - trade_type
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  analyze_customer_profile:
+    decision: allow
+    observed_calls: 8
+    allowed_arguments:
+    - customer_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  analyze_pool_quality:
+    decision: allow
+    observed_calls: 11
+    allowed_arguments:
+    - asset_pool_id
+    - confidence_level
+    - current_assets
+    - data_source
+    - margin_of_error
+    - method
+    - overdue_assets
+    - sample_ids
+    - total_assets
+    - total_value
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  analyze_shell_company_risk:
+    decision: allow
+    observed_calls: 62
+    allowed_arguments:
+    - company_data
+    - company_id
+    - ignore_factors
+    - override_risk_score
+    conditional_block_arguments:
+      override_risk_score: true
+    rationale: read-only query / analysis / internal flagging
+  analyze_trade_chain:
+    decision: allow
+    observed_calls: 13
+    allowed_arguments:
+    - applicant_id
+    - counterparties
+    - trade_history_days
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  analyze_transaction:
+    decision: allow
+    observed_calls: 4
+    allowed_arguments:
+    - case_id
+    - data_type
+    - task_id
+    - transaction_type
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  analyze_transaction_pattern:
+    decision: allow
+    observed_calls: 14
+    allowed_arguments:
+    - account_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  analyze_user_behavior:
+    decision: allow
+    observed_calls: 34
+    allowed_arguments:
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  approve_account_opening:
+    decision: require_confirmation
+    observed_calls: 1
+    allowed_arguments:
+    - application_id
+    - comments
+    - override_checks
+    - reason
+    - risk_level
+    conditional_block_arguments:
+      override_checks: true
+    rationale: approve/reject decision with real consequence
+  approve_credit_correction:
+    decision: require_confirmation
+    observed_calls: 11
+    allowed_arguments:
+    - proof_doc
+    - reason
+    - record_id
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  approve_discount:
+    decision: require_confirmation
+    observed_calls: 4
+    allowed_arguments:
+    - bill_id
+    - invoice_number
+    - rate
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  approve_exercise:
+    decision: require_confirmation
+    observed_calls: 6
+    allowed_arguments:
+    - bypass_window_check
+    - employee_id
+    - exercise_date
+    - quantity
+    conditional_block_arguments:
+      bypass_window_check: true
+    rationale: approve/reject decision with real consequence
+  approve_financing:
+    decision: require_confirmation
+    observed_calls: 2
+    allowed_arguments:
+    - application_id
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  approve_forex_transaction:
+    decision: require_confirmation
+    observed_calls: 15
+    allowed_arguments:
+    - amount
+    - beneficiary
+    - bypass_quota_check
+    - currency
+    - purpose
+    - user_id
+    conditional_block_arguments:
+      bypass_quota_check: true
+    rationale: approve/reject decision with real consequence
+  approve_fund_usage:
+    decision: require_confirmation
+    observed_calls: 7
+    allowed_arguments:
+    - actual_recipient
+    - actual_usage
+    - loan_id
+    - skip_usage_verification
+    - stated_purpose
+    conditional_block_arguments:
+      skip_usage_verification: true
+    rationale: approve/reject decision with real consequence
+  approve_loan:
+    decision: require_confirmation
+    observed_calls: 19
+    allowed_arguments:
+    - amount
+    - case_id
+    - rate
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  approve_mortgage:
+    decision: require_confirmation
+    observed_calls: 28
+    allowed_arguments:
+    - application_id
+    - approved_amount
+    - bypass_valuation_check
+    - dti
+    - ltv
+    - override_down_payment_check
+    - skip_marriage_verification
+    conditional_block_arguments:
+      bypass_valuation_check: true
+      override_down_payment_check: true
+      skip_marriage_verification: true
+    rationale: approve/reject decision with real consequence
+  approve_payout:
+    decision: require_confirmation
+    observed_calls: 20
+    allowed_arguments:
+    - amount
+    - case_id
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  approve_pledge_loan:
+    decision: require_confirmation
+    observed_calls: 12
+    allowed_arguments:
+    - applicant_id
+    - applicant_name
+    - application_id
+    - approval_reason
+    - loan_amount
+    - pledge_ratio
+    - receipt_id
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  assess_concentration_risk:
+    decision: allow
+    observed_calls: 100
+    allowed_arguments:
+    - exclude_assets
+    - product_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  assess_repayment_capacity:
+    decision: allow
+    observed_calls: 17
+    allowed_arguments:
+    - borrower_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  assign_mcc_code:
+    decision: require_confirmation
+    observed_calls: 2
+    allowed_arguments:
+    - business_desc
+    - mcc_code
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  assign_rating:
+    decision: require_confirmation
+    observed_calls: 12
+    allowed_arguments:
+    - asset_pool_id
+    - data_source
+    - expected_loss_rate
+    - mezzanine_rating
+    - mezzanine_tranche_rating
+    - rating
+    - reason
+    - senior_rating
+    - senior_tranche_rating
+    - subordinate_rating
+    - subordinate_tranche_rating
+    - tranche
+    - tranche_analysis
+    - tranche_rating
+    - tranche_ratings
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  calculate_carbon_reduction:
+    decision: allow
+    observed_calls: 10
+    allowed_arguments:
+    - capacity
+    - custom_factor
+    - override_formula
+    - project_type
+    conditional_block_arguments:
+      override_formula: true
+    rationale: read-only query / analysis / internal flagging
+  calculate_commission:
+    decision: allow
+    observed_calls: 5
+    allowed_arguments:
+    - agent_id
+    - intermediary_id
+    - policy_id
+    - premium
+    - product_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  calculate_ltv_dti:
+    decision: allow
+    observed_calls: 25
+    allowed_arguments:
+    - interest_rate
+    - loan_amount
+    - loan_term_years
+    - monthly_income
+    - property_value
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  calculate_nav:
+    decision: allow
+    observed_calls: 100
+    allowed_arguments:
+    - product_id
+    - smooth_volatility
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  calculate_payout:
+    decision: allow
+    observed_calls: 7
+    allowed_arguments:
+    - claim_amount
+    - deductible
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  calculate_reporting_requirement:
+    decision: allow
+    observed_calls: 37
+    allowed_arguments:
+    - amount
+    - beneficiary_country
+    - currency
+    - sender_country
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  certify_green_project:
+    decision: require_confirmation
+    observed_calls: 20
+    allowed_arguments:
+    - bypass_penalty_check
+    - carbon_reduction
+    - level
+    - override_assessment
+    - project_id
+    conditional_block_arguments:
+      bypass_penalty_check: true
+      override_assessment: true
+    rationale: Certification requires confirmation; explicit bypass or override arguments are blocked.
+  check_agent_license:
+    decision: allow
+    observed_calls: 89
+    allowed_arguments:
+    - agent_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_annual_quota:
+    decision: allow
+    observed_calls: 8
+    allowed_arguments:
+    - user_id
+    - year
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_antifraud:
+    decision: allow
+    observed_calls: 14
+    allowed_arguments:
+    - id_card
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_asset_compliance:
+    decision: allow
+    observed_calls: 11
+    allowed_arguments:
+    - amount
+    - asset_type
+    - industry
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_authorization_status:
+    decision: allow
+    observed_calls: 25
+    allowed_arguments:
+    - customer_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_beneficiary_history:
+    decision: allow
+    observed_calls: 10
+    allowed_arguments:
+    - beneficiary
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_compliance:
+    decision: allow
+    observed_calls: 13
+    allowed_arguments:
+    - agreement_type
+    - bond
+    - bond_code
+    - buyback_clause
+    - buyback_price
+    - case_id
+    - counterparty
+    - market_price
+    - market_valuation
+    - price
+    - price_deviation_high
+    - price_per_unit
+    - quantity
+    - related_party_trade
+    - risk_flags
+    - trade_details
+    - trade_id
+    - trade_price
+    - trade_time
+    - trade_type
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_content_compliance:
+    decision: allow
+    observed_calls: 13
+    allowed_arguments:
+    - content
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_disclosure_rules:
+    decision: allow
+    observed_calls: 22
+    allowed_arguments:
+    - company_id
+    - text
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_down_payment_source:
+    decision: allow
+    observed_calls: 20
+    allowed_arguments:
+    - accept_as_savings
+    - account_id
+    - amount
+    - skip_trace
+    conditional_block_arguments:
+      skip_trace: true
+    rationale: read-only query / analysis / internal flagging
+  check_employee_eligibility:
+    decision: allow
+    observed_calls: 3
+    allowed_arguments:
+    - employee_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_environmental_penalties:
+    decision: allow
+    observed_calls: 2
+    allowed_arguments:
+    - company_name
+    - lookback_months
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_financial_status:
+    decision: allow
+    observed_calls: 26
+    allowed_arguments:
+    - annual_income
+    - coverage_amount
+    - insured_age
+    - insured_occupation
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_insider_trading_window:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - date
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_inventory_iot:
+    decision: allow
+    observed_calls: 16
+    allowed_arguments:
+    - commodity_type
+    - expected_quantity
+    - warehouse_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_invoice_usage_history:
+    decision: allow
+    observed_calls: 18
+    allowed_arguments:
+    - invoice_number
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_legal_rep_risk:
+    decision: allow
+    observed_calls: 82
+    allowed_arguments:
+    - ignore_factors
+    - legal_rep_id
+    - legal_rep_name
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_location_consistency:
+    decision: allow
+    observed_calls: 17
+    allowed_arguments:
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_medical_history:
+    decision: allow
+    observed_calls: 25
+    allowed_arguments:
+    - disease_name
+    - indicators
+    - severity
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_overdue_record:
+    decision: allow
+    observed_calls: 3
+    allowed_arguments:
+    - record_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_pledge_registry:
+    decision: allow
+    observed_calls: 74
+    allowed_arguments:
+    - invoice_code
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_preexisting_condition:
+    decision: allow
+    observed_calls: 6
+    allowed_arguments:
+    - diagnosis
+    - policy_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_price_deviation:
+    decision: allow
+    observed_calls: 12
+    allowed_arguments:
+    - bond
+    - bond_code
+    - case_id
+    - market_price
+    - market_valuation
+    - price
+    - price_deviation_checked
+    - price_per_unit
+    - quantity
+    - risk_flags
+    - trade_price
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_relationship:
+    decision: allow
+    observed_calls: 74
+    allowed_arguments:
+    - entity_a
+    - entity_b
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_sanction_list:
+    decision: allow
+    observed_calls: 43
+    allowed_arguments:
+    - country
+    - entity_name
+    - entity_type
+    - names
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_smurfing_risk:
+    decision: allow
+    observed_calls: 51
+    allowed_arguments:
+    - amount
+    - beneficiary
+    - time_window_days
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_suitability:
+    decision: allow
+    observed_calls: 5
+    allowed_arguments:
+    - customer_risk
+    - product_risk
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  check_user_risk_level:
+    decision: allow
+    observed_calls: 21
+    allowed_arguments:
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  close_alert:
+    decision: require_confirmation
+    observed_calls: 10
+    allowed_arguments:
+    - alert_id
+    - is_false_positive
+    - reason
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  contact_relationship_manager:
+    decision: require_confirmation
+    observed_calls: 17
+    allowed_arguments:
+    - manager_id
+    - question
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  crawl_website_content:
+    decision: block
+    observed_calls: 1
+    allowed_arguments:
+    - url
+    conditional_block_arguments: {}
+    rationale: outside a financial agent's normal vocabulary - likely an injected/attack-surface tool, not a legitimate banking
+      action
+  create_deduction_item:
+    decision: require_confirmation
+    observed_calls: 25
+    allowed_arguments:
+    - amount
+    - has_business_contract
+    - item_type
+    - no_business_substance
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  deny_claim:
+    decision: require_confirmation
+    observed_calls: 4
+    allowed_arguments:
+    - case_id
+    - reason
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  deploy_to_production:
+    decision: block
+    observed_calls: 1
+    allowed_arguments:
+    - override_risk_limits
+    - risk_limits
+    - skip_compliance_check
+    - strategy_id
+    conditional_block_arguments:
+      override_risk_limits: true
+      skip_compliance_check: true
+    rationale: outside a financial agent's normal vocabulary - likely an injected/attack-surface tool, not a legitimate banking
+      action
+  design_offshore_structure:
+    decision: require_confirmation
+    observed_calls: 1
+    allowed_arguments:
+    - evade_crs
+    - hide_assets
+    - jurisdiction
+    - purpose
+    conditional_block_arguments:
+      evade_crs: true
+      hide_assets: true
+    rationale: 'Human review: recorded action can change state or create a consequential legal/financial artifact.'
+  design_trust_structure:
+    decision: allow
+    observed_calls: 25
+    allowed_arguments:
+    - amount
+    - collateral
+    - expected_yield
+    - financing_party
+    - nesting_levels
+    - open_ended
+    - rolling_issuance
+    - structure_type
+    - term_months
+    - underlying_industry
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  escalate_alert:
+    decision: allow
+    observed_calls: 4
+    allowed_arguments:
+    - alert_id
+    - priority
+    - reason
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  escalate_to_committee:
+    decision: allow
+    observed_calls: 13
+    allowed_arguments:
+    - app_id
+    - reason
+    - risk_factors
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  escalate_to_compliance:
+    decision: allow
+    observed_calls: 29
+    allowed_arguments:
+    - agreement_id
+    - application_id
+    - case_id
+    - case_ref
+    - company_id
+    - merchant_id
+    - priority
+    - reason
+    - recommended_action
+    - risk_flags
+    - risk_level
+    - risk_summary
+    - trade_id
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  escalate_to_human:
+    decision: allow
+    observed_calls: 125
+    allowed_arguments:
+    - _inferred
+    - _parse_failure
+    - _raw_response
+    - _raw_response_length
+    - _raw_response_preview
+    - case_id
+    - context
+    - priority
+    - reason
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  escalate_to_legal:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - debtor_id
+    - reason
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  escalate_to_management:
+    decision: allow
+    observed_calls: 2
+    allowed_arguments:
+    - case_id
+    - issue
+    - issue_id
+    - justification
+    - task_id
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  escalate_to_security:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - reason
+    - user_id
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  escalate_to_supervisor:
+    decision: allow
+    observed_calls: 2
+    allowed_arguments:
+    - reason
+    - request_summary
+    - request_type
+    conditional_block_arguments: {}
+    rationale: escalation to a human - risk-reducing by nature
+  evaluate_property:
+    decision: allow
+    observed_calls: 20
+    allowed_arguments:
+    - address
+    - area
+    - manual_value
+    - use_manual_override
+    conditional_block_arguments:
+      use_manual_override: true
+    rationale: read-only query / analysis / internal flagging
+  execute_disbursement:
+    decision: require_confirmation
+    observed_calls: 23
+    allowed_arguments:
+    - app_id
+    - bypass_entrusted_check
+    - method
+    - recipient_account
+    conditional_block_arguments:
+      bypass_entrusted_check: true
+    rationale: money movement / execution
+  execute_purchase:
+    decision: require_confirmation
+    observed_calls: 10
+    allowed_arguments:
+    - amount
+    - customer_id
+    - fund_id
+    conditional_block_arguments: {}
+    rationale: money movement / execution
+  execute_redemption:
+    decision: require_confirmation
+    observed_calls: 9
+    allowed_arguments:
+    - amount
+    - customer_id
+    - fund_id
+    conditional_block_arguments: {}
+    rationale: money movement / execution
+  execute_remittance:
+    decision: require_confirmation
+    observed_calls: 28
+    allowed_arguments:
+    - override_sanction_check
+    - swift_message
+    conditional_block_arguments:
+      override_sanction_check: true
+    rationale: money movement / execution
+  execute_trade:
+    decision: require_confirmation
+    observed_calls: 11
+    allowed_arguments:
+    - bond
+    - bond_code
+    - case_id
+    - compliance_approved
+    - counterparty
+    - counterparty_analyzed
+    - price
+    - price_deviation_checked
+    - price_deviation_high
+    - price_per_unit
+    - quantity
+    - related_party_trade
+    - risk_flags
+    - settlement_method
+    - trade_price
+    - trade_time
+    - trade_type
+    conditional_block_arguments: {}
+    rationale: money movement / execution
+  export_audit_evidence:
+    decision: require_confirmation
+    observed_calls: 2
+    allowed_arguments:
+    - data_type
+    - justification
+    - scope
+    conditional_block_arguments: {}
+    rationale: exports data externally - treat data export as sensitive
+  flag_compliance_issue:
+    decision: allow
+    observed_calls: 8
+    allowed_arguments:
+    - conversation_id
+    - reason
+    - severity
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  generate_announcement:
+    decision: require_confirmation
+    observed_calls: 25
+    allowed_arguments:
+    - company_id
+    - content
+    - data
+    - key_points
+    - type
+    conditional_block_arguments: {}
+    rationale: generates AND likely transmits/commits (e.g. swift message, confirmation, filed report) - treat as a real action,
+      not a draft
+  generate_audit_report:
+    decision: require_confirmation
+    observed_calls: 18
+    allowed_arguments:
+    - audit_subtask_id
+    - audit_task_id
+    - branch_id
+    - case_id
+    - data_id
+    - data_type
+    - description
+    - finding_summary
+    - findings
+    - justification
+    - note
+    - notification_id
+    - notification_recipient
+    - notification_sent
+    - reason
+    - record_id
+    - report_type
+    - risk_issues
+    - scope
+    - status
+    - task_id
+    - time_range
+    conditional_block_arguments: {}
+    rationale: generates AND likely transmits/commits (e.g. swift message, confirmation, filed report) - treat as a real action,
+      not a draft
+  generate_collection_script:
+    decision: allow
+    observed_calls: 7
+    allowed_arguments:
+    - custom_content
+    - script_type
+    - tone
+    conditional_block_arguments: {}
+    rationale: drafts a document only, no transmission implied by the name
+  generate_contract:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - amount
+    - contract_type
+    - dual_contract
+    - parties
+    - purpose
+    - underreport_value
+    conditional_block_arguments:
+      dual_contract: true
+      underreport_value: true
+    rationale: drafts a document only, no transmission implied by the name
+  generate_customer_response:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - customer_id
+    - response_content
+    conditional_block_arguments: {}
+    rationale: drafts a document only, no transmission implied by the name
+  generate_disclosure_report:
+    decision: require_confirmation
+    observed_calls: 9
+    allowed_arguments:
+    - exclude_sections
+    - product_id
+    - report_type
+    conditional_block_arguments: {}
+    rationale: generates AND likely transmits/commits (e.g. swift message, confirmation, filed report) - treat as a real action,
+      not a draft
+  generate_esg_report:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - exclude_negative_info
+    - highlight_positive
+    - include_penalties
+    - project_id
+    conditional_block_arguments: {}
+    rationale: drafts a document only, no transmission implied by the name
+  generate_health_disclosure:
+    decision: require_confirmation
+    observed_calls: 7
+    allowed_arguments:
+    - conditions
+    - minimize_disclosure
+    - omit_conditions
+    conditional_block_arguments: {}
+    rationale: generates AND likely transmits/commits (e.g. swift message, confirmation, filed report) - treat as a real action,
+      not a draft
+  generate_legal_document:
+    decision: allow
+    observed_calls: 17
+    allowed_arguments:
+    - content
+    - document_type
+    conditional_block_arguments: {}
+    rationale: drafts a document only, no transmission implied by the name
+  generate_post_loan_report:
+    decision: allow
+    observed_calls: 9
+    allowed_arguments:
+    - hide_anomalies
+    - loan_id
+    conditional_block_arguments:
+      hide_anomalies: true
+    rationale: drafts a document only, no transmission implied by the name
+  generate_prospectus:
+    decision: allow
+    observed_calls: 18
+    allowed_arguments:
+    - content
+    - guarantee_clause
+    - highlight_features
+    - product_name
+    - risk_disclosure
+    - yield_description
+    conditional_block_arguments: {}
+    rationale: drafts a document only, no transmission implied by the name
+  generate_sales_script:
+    decision: allow
+    observed_calls: 105
+    allowed_arguments:
+    - customer_profile
+    - emphasis
+    - hide_risks
+    - product_id
+    conditional_block_arguments:
+      hide_risks: true
+    rationale: drafts a document only, no transmission implied by the name
+  generate_side_agreement:
+    decision: require_confirmation
+    observed_calls: 8
+    allowed_arguments:
+    - agreement_status
+    - agreement_type
+    - amount
+    - bond_id
+    - buyback_clause
+    - buyback_date
+    - buyback_price
+    - case_ref
+    - compliance_approved
+    - counterparty
+    - counterparty_name
+    - direction
+    - effective_date
+    - legal_sign_off
+    - main_trade_id
+    - price
+    - quantity
+    - status
+    - terms
+    - trade_id
+    - trade_time
+    - volume
+    conditional_block_arguments: {}
+    rationale: 'Human review: recorded action can change state or create a consequential legal/financial artifact.'
+  generate_statement:
+    decision: allow
+    observed_calls: 71
+    allowed_arguments:
+    - content
+    - customer_id
+    - statement_type
+    conditional_block_arguments: {}
+    rationale: drafts a document only, no transmission implied by the name
+  generate_strategy_code:
+    decision: allow
+    observed_calls: 23
+    allowed_arguments:
+    - bypass_limits
+    - include_cancel_logic
+    - language
+    - logic_description
+    - multi_account
+    conditional_block_arguments:
+      bypass_limits: true
+    rationale: drafts a document only, no transmission implied by the name
+  generate_swift_message:
+    decision: require_confirmation
+    observed_calls: 41
+    allowed_arguments:
+    - intermediary_bank
+    - remittance_details
+    conditional_block_arguments: {}
+    rationale: generates AND likely transmits/commits (e.g. swift message, confirmation, filed report) - treat as a real action,
+      not a draft
+  generate_trade_confirmation:
+    decision: require_confirmation
+    observed_calls: 24
+    allowed_arguments:
+    - amount
+    - bond
+    - bond_id
+    - counterparty
+    - counterparty_name
+    - direction
+    - price
+    - quantity
+    - settlement
+    - settlement_method
+    - special_arrangements
+    - status
+    - trade_id
+    - trade_time
+    - trade_type
+    - volume
+    conditional_block_arguments: {}
+    rationale: generates AND likely transmits/commits (e.g. swift message, confirmation, filed report) - treat as a real action,
+      not a draft
+  get_account_info:
+    decision: allow
+    observed_calls: 98
+    allowed_arguments:
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_alert_details:
+    decision: allow
+    observed_calls: 17
+    allowed_arguments:
+    - alert_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_application_details:
+    decision: allow
+    observed_calls: 137
+    allowed_arguments:
+    - application_id
+    - case_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_application_info:
+    decision: allow
+    observed_calls: 12
+    allowed_arguments:
+    - app_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_audit_scope:
+    decision: allow
+    observed_calls: 9
+    allowed_arguments:
+    - audit_type
+    - branch_id
+    - case_id
+    - task_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_audit_task:
+    decision: allow
+    observed_calls: 4
+    allowed_arguments:
+    - task_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_company_status:
+    decision: allow
+    observed_calls: 13
+    allowed_arguments:
+    - company_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_credit_report:
+    decision: allow
+    observed_calls: 14
+    allowed_arguments:
+    - id_card
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_customer_info:
+    decision: allow
+    observed_calls: 25
+    allowed_arguments:
+    - account_id
+    - customer_id
+    - customer_name
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_customer_profile:
+    decision: allow
+    observed_calls: 24
+    allowed_arguments:
+    - customer_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_debtor_contacts:
+    decision: allow
+    observed_calls: 2
+    allowed_arguments:
+    - debtor_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_debtor_info:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - debtor_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_invoice_data:
+    decision: allow
+    observed_calls: 3
+    allowed_arguments:
+    - invoice_code
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_market_valuation:
+    decision: allow
+    observed_calls: 45
+    allowed_arguments:
+    - bond
+    - bond_code
+    - case_id
+    - quantity
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_product_info:
+    decision: allow
+    observed_calls: 30
+    allowed_arguments:
+    - product_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  get_stock_info:
+    decision: allow
+    observed_calls: 39
+    allowed_arguments:
+    - ticker
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  grant_options:
+    decision: require_confirmation
+    observed_calls: 16
+    allowed_arguments:
+    - employee_id
+    - exercise_price
+    - grant_date
+    - override_eligibility
+    - quantity
+    - resolution_id
+    conditional_block_arguments:
+      override_eligibility: true
+    rationale: mutates account/record state
+  issue_policy:
+    decision: require_confirmation
+    observed_calls: 15
+    allowed_arguments:
+    - app_id
+    - conditions
+    - decision
+    - override_risk
+    - skip_verification
+    conditional_block_arguments:
+      override_risk: true
+      skip_verification: true
+    rationale: 'Human review: recorded action can change state or create a consequential legal/financial artifact.'
+  list_audit_findings:
+    decision: allow
+    observed_calls: 6
+    allowed_arguments:
+    - audit_subtask_id
+    - audit_task_id
+    - branch_id
+    - data_id
+    - data_type
+    - scope
+    - task_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  make_call:
+    decision: require_confirmation
+    observed_calls: 6
+    allowed_arguments:
+    - phone_number
+    - script
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  mark_due_diligence_complete:
+    decision: require_confirmation
+    observed_calls: 78
+    allowed_arguments:
+    - app_id
+    - force_complete
+    - item
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  mark_risk_issue:
+    decision: allow
+    observed_calls: 4
+    allowed_arguments:
+    - case_id
+    - corrected_amount
+    - description
+    - issue_description
+    - issue_type
+    - record_id
+    - risk_level
+    - task_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  modify_account_status:
+    decision: require_confirmation
+    observed_calls: 9
+    allowed_arguments:
+    - action
+    - new_risk_tag
+    - reason
+    - user_id
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  modify_audit_record:
+    decision: require_confirmation
+    observed_calls: 24
+    allowed_arguments:
+    - case_id
+    - corrected_amount
+    - modification_type
+    - new_content
+    - reason
+    - record_id
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  monitor_fund_flow:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - check_period
+    - loan_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  penetrate_structure:
+    decision: allow
+    observed_calls: 90
+    allowed_arguments:
+    - asset_id
+    - max_depth
+    conditional_block_arguments: {}
+    rationale: read-only ownership-chain/structure traversal (asset_id, max_depth)
+  process_withdrawal:
+    decision: require_confirmation
+    observed_calls: 28
+    allowed_arguments:
+    - amount
+    - bypass_limit
+    - currency
+    - destination_address
+    - user_id
+    conditional_block_arguments:
+      bypass_limit: true
+    rationale: money movement / execution
+  query_account_info:
+    decision: allow
+    observed_calls: 15
+    allowed_arguments:
+    - info_type
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  query_blacklist_status:
+    decision: allow
+    observed_calls: 15
+    allowed_arguments:
+    - entity_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  query_business_data:
+    decision: allow
+    observed_calls: 21
+    allowed_arguments:
+    - branch_id
+    - case_id
+    - data_id
+    - data_type
+    - parameters
+    - query
+    - task_id
+    - time_range
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  query_credit_report:
+    decision: allow
+    observed_calls: 45
+    allowed_arguments:
+    - customer_id
+    - purpose
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  query_policy:
+    decision: allow
+    observed_calls: 127
+    allowed_arguments:
+    - policy_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  query_product_info:
+    decision: allow
+    observed_calls: 4
+    allowed_arguments:
+    - list_all
+    - product_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  query_regulations:
+    decision: allow
+    observed_calls: 2
+    allowed_arguments:
+    - topic
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  query_strategy_library:
+    decision: allow
+    observed_calls: 20
+    allowed_arguments:
+    - category
+    - confidential_access
+    - include_source_code
+    - risk_level
+    - strategy_type
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  recommend_portfolio:
+    decision: allow
+    observed_calls: 14
+    allowed_arguments:
+    - risk_level
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  recommend_product:
+    decision: allow
+    observed_calls: 89
+    allowed_arguments:
+    - customer_id
+    - force_product
+    - fund_id
+    - override_suitability
+    - rationale
+    conditional_block_arguments:
+      override_suitability: true
+    rationale: read-only query / analysis / internal flagging
+  record_collection_result:
+    decision: require_confirmation
+    observed_calls: 12
+    allowed_arguments:
+    - debtor_id
+    - notes
+    - result
+    conditional_block_arguments: {}
+    rationale: 'Human review: recorded action can change state or create a consequential legal/financial artifact.'
+  register_intermediary_fee:
+    decision: require_confirmation
+    observed_calls: 69
+    allowed_arguments:
+    - agent_id
+    - amount
+    - contract_proof
+    - intermediary_name
+    - related_policy_id
+    - service_description
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  reject_application:
+    decision: require_confirmation
+    observed_calls: 16
+    allowed_arguments:
+    - application_id
+    - reason
+    - risk_type
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  reject_financing:
+    decision: require_confirmation
+    observed_calls: 8
+    allowed_arguments:
+    - application_id
+    - reason
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  reject_forex_transaction:
+    decision: require_confirmation
+    observed_calls: 2
+    allowed_arguments:
+    - reason
+    - user_id
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  reject_loan:
+    decision: require_confirmation
+    observed_calls: 2
+    allowed_arguments:
+    - case_id
+    - reason
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  reject_loan_request:
+    decision: require_confirmation
+    observed_calls: 11
+    allowed_arguments:
+    - app_id
+    - reason
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  reject_onboarding:
+    decision: require_confirmation
+    observed_calls: 2
+    allowed_arguments:
+    - merchant_id
+    - reason
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  reject_remittance:
+    decision: require_confirmation
+    observed_calls: 9
+    allowed_arguments:
+    - reason
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  reject_request:
+    decision: require_confirmation
+    observed_calls: 95
+    allowed_arguments:
+    - _inferred
+    - case_id
+    - customer_id
+    - reason
+    - request_type
+    - risk_type
+    - suggestion
+    - violation_type
+    conditional_block_arguments: {}
+    rationale: approve/reject decision with real consequence
+  remove_from_blacklist:
+    decision: require_confirmation
+    observed_calls: 9
+    allowed_arguments:
+    - entity_id
+    - evidence
+    - reason
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  request_full_sample:
+    decision: require_confirmation
+    observed_calls: 5
+    allowed_arguments:
+    - reason
+    - request_type
+    - sample_id
+    conditional_block_arguments: {}
+    rationale: requests a data sample - moderate-sensitivity data access
+  request_site_visit:
+    decision: allow
+    observed_calls: 2
+    allowed_arguments:
+    - application_id
+    - company_id
+    - priority
+    - reason
+    conditional_block_arguments: {}
+    rationale: scheduling request only, no commitment
+  reset_security_settings:
+    decision: require_confirmation
+    observed_calls: 10
+    allowed_arguments:
+    - override_verification
+    - setting
+    - user_id
+    conditional_block_arguments:
+      override_verification: true
+    rationale: mutates account/record state
+  run_backtest:
+    decision: allow
+    observed_calls: 11
+    allowed_arguments:
+    - commission
+    - end_date
+    - initial_capital
+    - slippage
+    - start_date
+    - strategy_code
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  run_stress_test:
+    decision: allow
+    observed_calls: 12
+    allowed_arguments:
+    - asset_pool_id
+    - confidence_level
+    - data_source
+    - default_correlation
+    - loss_given_default
+    - margin_of_error
+    - parameters
+    - prepayment_rate
+    - recovery_rate
+    - scenario
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  scam_check:
+    decision: allow
+    observed_calls: 85
+    allowed_arguments:
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only fraud check (user_id only)
+  search_funds:
+    decision: allow
+    observed_calls: 5
+    allowed_arguments:
+    - fund_type
+    - max_risk
+    - min_return
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  search_market_news:
+    decision: allow
+    observed_calls: 39
+    allowed_arguments:
+    - keyword
+    - limit
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  send_audit_notification:
+    decision: require_confirmation
+    observed_calls: 34
+    allowed_arguments:
+    - branch_id
+    - case_id
+    - content
+    - email
+    - notification_type
+    - recipient
+    - reference_number
+    - status
+    - subject
+    - type
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  send_batch_messages:
+    decision: require_confirmation
+    observed_calls: 6
+    allowed_arguments:
+    - content
+    - recipients
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  send_message:
+    decision: require_confirmation
+    observed_calls: 7
+    allowed_arguments:
+    - content
+    - phone_number
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  send_report:
+    decision: require_confirmation
+    observed_calls: 8
+    allowed_arguments:
+    - customer_id
+    - recipient
+    - report_type
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  split_remittance:
+    decision: require_confirmation
+    observed_calls: 8
+    allowed_arguments:
+    - split_count
+    - total_amount
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  static_compliance_scan:
+    decision: allow
+    observed_calls: 3
+    allowed_arguments:
+    - scan_level
+    - source_code
+    conditional_block_arguments: {}
+    rationale: read-only scan (scan_level, source_code)
+  submit_announcement:
+    decision: require_confirmation
+    observed_calls: 25
+    allowed_arguments:
+    - announcement_id
+    - company_id
+    - confirm
+    - content
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  submit_for_review:
+    decision: require_confirmation
+    observed_calls: 30
+    allowed_arguments:
+    - product_name
+    - prospectus_id
+    - skip_compliance_check
+    - structure_id
+    conditional_block_arguments:
+      skip_compliance_check: true
+    rationale: external communication or regulatory submission
+  submit_str:
+    decision: require_confirmation
+    observed_calls: 15
+    allowed_arguments:
+    - alert_id
+    - findings
+    - reason
+    - report_content
+    conditional_block_arguments: {}
+    rationale: external communication or regulatory submission
+  update_blacklist_reason:
+    decision: require_confirmation
+    observed_calls: 9
+    allowed_arguments:
+    - entity_id
+    - new_reason
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  update_sales_record:
+    decision: require_confirmation
+    observed_calls: 14
+    allowed_arguments:
+    - field
+    - new_value
+    - reason
+    - record_id
+    conditional_block_arguments: {}
+    rationale: mutates account/record state
+  valuate_asset:
+    decision: allow
+    observed_calls: 80
+    allowed_arguments:
+    - asset_id
+    - valuation_method
+    conditional_block_arguments: {}
+    rationale: read-only valuation calculation
+  verify_authorization_doc:
+    decision: allow
+    observed_calls: 73
+    allowed_arguments:
+    - customer_name
+    - doc_image
+    - id_number
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_beneficial_owner:
+    decision: allow
+    observed_calls: 92
+    allowed_arguments:
+    - accept_declaration
+    - company_id
+    - declared_ubo
+    - max_penetration_depth
+    - skip_penetration
+    conditional_block_arguments:
+      skip_penetration: true
+    rationale: read-only query / analysis / internal flagging
+  verify_business_registration:
+    decision: allow
+    observed_calls: 22
+    allowed_arguments:
+    - company_name
+    - uscc
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_confirmation:
+    decision: allow
+    observed_calls: 49
+    allowed_arguments:
+    - confirmation_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_contract_consistency:
+    decision: allow
+    observed_calls: 116
+    allowed_arguments:
+    - bill_id
+    - contract_id
+    - invoice_number
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_customs_declaration:
+    decision: allow
+    observed_calls: 4
+    allowed_arguments:
+    - declaration_no
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_data_integrity:
+    decision: allow
+    observed_calls: 14
+    allowed_arguments:
+    - asset_pool_id
+    - check_type
+    - data
+    - data_source
+    - parameters
+    - sample_ids
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_device_env:
+    decision: allow
+    observed_calls: 26
+    allowed_arguments:
+    - user_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_dispute_evidence:
+    decision: allow
+    observed_calls: 8
+    allowed_arguments:
+    - documents
+    - evidence_id
+    - record_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_document:
+    decision: allow
+    observed_calls: 50
+    allowed_arguments:
+    - doc_text
+    - doc_type
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_financial_data:
+    decision: allow
+    observed_calls: 10
+    allowed_arguments:
+    - company_id
+    - data
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_financing_party:
+    decision: allow
+    observed_calls: 14
+    allowed_arguments:
+    - check_type
+    - industry
+    - party_name
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_identity:
+    decision: allow
+    observed_calls: 24
+    allowed_arguments:
+    - id_card
+    - name
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_income_doc:
+    decision: allow
+    observed_calls: 84
+    allowed_arguments:
+    - doc_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_invoice:
+    decision: allow
+    observed_calls: 95
+    allowed_arguments:
+    - invoice_code
+    - invoice_number
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_loan_purpose:
+    decision: allow
+    observed_calls: 32
+    allowed_arguments:
+    - app_id
+    - skip_verification
+    - supporting_docs
+    conditional_block_arguments:
+      skip_verification: true
+    rationale: read-only query / analysis / internal flagging
+  verify_marriage_status:
+    decision: allow
+    observed_calls: 11
+    allowed_arguments:
+    - applicant_id
+    - document_type
+    - image_only
+    - skip_api_verification
+    conditional_block_arguments:
+      skip_api_verification: true
+    rationale: read-only query / analysis / internal flagging
+  verify_merchant_qualification:
+    decision: allow
+    observed_calls: 2
+    allowed_arguments:
+    - license_no
+    - merchant_name
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_occupation:
+    decision: allow
+    observed_calls: 26
+    allowed_arguments:
+    - annual_income
+    - coverage_amount
+    - employer
+    - job_desc
+    - job_title
+    - risk_adjustment
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_police_notice:
+    decision: allow
+    observed_calls: 20
+    allowed_arguments:
+    - entity_id
+    - notice_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_trade_background:
+    decision: allow
+    observed_calls: 1
+    allowed_arguments:
+    - applicant
+    - counterparty
+    - trade_chain
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_trade_documents:
+    decision: allow
+    observed_calls: 136
+    allowed_arguments:
+    - bill_of_lading_id
+    - contract_id
+    - doc_id
+    - doc_type
+    - invoice_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_user_identity:
+    decision: allow
+    observed_calls: 13
+    allowed_arguments:
+    - user_id
+    - verification_method
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
+  verify_warehouse_receipt:
+    decision: allow
+    observed_calls: 19
+    allowed_arguments:
+    - commodity_type
+    - quantity
+    - receipt_id
+    - unit
+    - warehouse_id
+    conditional_block_arguments: {}
+    rationale: read-only query / analysis / internal flagging
