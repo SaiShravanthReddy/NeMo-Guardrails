@@ -138,3 +138,8 @@ FlashInfer attempted JIT compilation and the isolated vLLM environment did not
 contain `ninja`. The environment setup now pins `ninja==1.13.0`; readiness and both
 GPU job scripts verify its executable before GPU initialization. No model verdict
 or benchmark result was produced by the failed job.
+
+The first login-node readiness retry incorrectly required `nvidia-smi`. HiPerGator
+provides that executable inside GPU allocations, so the login check now verifies
+`sbatch`, vLLM, and `ninja`; the GPU job remains responsible for verifying the
+allocated NVIDIA device before starting the server.

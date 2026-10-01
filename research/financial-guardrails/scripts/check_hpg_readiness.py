@@ -62,7 +62,7 @@ def main() -> None:
         if not path.is_file():
             raise SystemExit(f"FAIL: missing job script: {path}")
     if args.require_hpg_tools:
-        for executable in ("sbatch", "nvidia-smi"):
+        for executable in ("sbatch",):
             if shutil.which(executable) is None:
                 raise SystemExit(f"FAIL: required HiPerGator command is unavailable: {executable}")
         if not Path(".venv-vllm/bin/vllm").is_file():
