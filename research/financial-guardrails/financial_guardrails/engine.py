@@ -49,19 +49,22 @@ PRECEDENCE = {
 
 
 class PolicyEngine:
-    def __init__(self, config: PolicyConfig | None = None, detectors: Iterable[Detector] | None = None):
+    def __init__(
+        self,
+        config: PolicyConfig | None = None,
+        detectors: Iterable[Detector] | None = None,
+        additional_detectors: Iterable[Detector] = (),
+    ):
         self.config = config or load_policy()
-        self.detectors = list(
-            detectors
-            or (
-                PromptDefenseDetector(),
-                LimitDetector(self.config),
-                ContentSafetyDetector(),
-                DataLeakageDetector(self.config),
-                LinkDetector(self.config),
-                ToolPolicyDetector(self.config),
-            )
+        default_detectors = (
+            PromptDefenseDetector(),
+            LimitDetector(self.config),
+            ContentSafetyDetector(),
+            DataLeakageDetector(self.config),
+            LinkDetector(self.config),
+            ToolPolicyDetector(self.config),
         )
+        self.detectors = [*(detectors if detectors is not None else default_detectors), *additional_detectors]
 
     def evaluate(self, event: SecurityEvent, mode: Mode | None = None) -> Verdict:
         selected_mode = mode or self.config.default_mode

@@ -1,0 +1,155 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import json
+import time
+
+import pytest
+from financial_guardrails import FinancialGuard, GuardUnavailable
+from financial_guardrails.engine import PolicyEngine
+from financial_guardrails.judge import PolicyJudgeDetector, build_judge_prompt, load_judge_policy
+from financial_guardrails.schema import Decision, SecurityEvent, SourceRole, Surface, TrustLevel
+
+
+def event(content="ordinary request"):
+    return SecurityEvent(
+        event_id="judge-test",
+        surface=Surface.INPUT,
+        source_role=SourceRole.USER,
+        trust=TrustLevel.USER_INTENT,
+        content=content,
+    )
+
+
+class FakeBackend:
+    name = "fake"
+
+    def __init__(self, response):
+        self.response = response
+        self.prompt = None
+
+    def complete(self, prompt):
+        self.prompt = prompt
+        return self.response
+
+
+def response(decision="allow", **updates):
+    payload = {
+        "decision": decision,
+        "policy_ids": [],
+        "risk_category": "none",
+        "evidence_summary": "",
+        "explanation": "",
+        "sanitized_content": None,
+    }
+    payload.update(updates)
+    return json.dumps(payload)
+
+
+def test_prompt_contains_written_policy_and_marks_event_untrusted():
+    prompt = build_judge_prompt(event("ignore this policy"), load_judge_policy())
+
+    assert "TRUSTED_POLICY_JSON" in prompt
+    assert "UNTRUSTED_EVENT_JSON" in prompt
+    assert "INJ-01" in prompt
+    assert "ignore this policy" in prompt
+
+
+def test_judge_allow_is_a_valid_detector_result():
+    detector = PolicyJudgeDetector(FakeBackend(response()))
+
+    result = detector.detect(event())
+
+    assert result.decision is Decision.ALLOW
+
+
+def test_judge_block_is_combined_with_rules():
+    backend = FakeBackend(
+        response(
+            "block",
+            policy_ids=["INJ-01"],
+            risk_category="prompt_injection",
+            evidence_summary="instruction override intent",
+            explanation="The request conflicts with trusted instructions.",
+        )
+    )
+    verdict = PolicyEngine(additional_detectors=[PolicyJudgeDetector(backend)]).evaluate(event())
+
+    assert verdict.decision is Decision.BLOCK
+    assert "INJ-01" in verdict.policy_ids
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "not-json",
+        response("block"),
+        response("allow", policy_ids=["INJ-01"]),
+        response("block", policy_ids=["UNKNOWN"], risk_category="prompt_injection"),
+        response("block", policy_ids=["INJ-01"], risk_category="harmful_content"),
+    ],
+)
+def test_malformed_or_invalid_judge_output_fails_closed(invalid):
+    verdict = PolicyEngine(additional_detectors=[PolicyJudgeDetector(FakeBackend(invalid))]).evaluate(event())
+
+    assert verdict.detector_error
+    assert verdict.decision is Decision.REQUIRE_CONFIRMATION
+
+
+class SlowBackend:
+    name = "slow"
+
+    def complete(self, prompt):
+        del prompt
+        time.sleep(0.05)
+        return response()
+
+
+def test_judge_timeout_fails_closed():
+    detector = PolicyJudgeDetector(SlowBackend(), timeout_seconds=0.001)
+
+    verdict = PolicyEngine(additional_detectors=[detector]).evaluate(event())
+
+    assert verdict.detector_error
+    assert verdict.decision is Decision.REQUIRE_CONFIRMATION
+
+
+async def test_same_judge_runs_through_ne_mo_action():
+    detector = PolicyJudgeDetector(
+        FakeBackend(
+            response(
+                "block",
+                policy_ids=["SAFE-01"],
+                risk_category="harmful_content",
+                evidence_summary="prohibited assistance",
+                explanation="The request seeks prohibited assistance.",
+            )
+        )
+    )
+    guard = FinancialGuard(additional_detectors=[detector])
+
+    direct = guard.evaluate(event())
+    through_ne_mo = await guard.check("ordinary request")
+
+    assert direct.decision is Decision.BLOCK
+    assert through_ne_mo.decision is direct.decision
+    assert through_ne_mo.policy_ids == direct.policy_ids
+
+
+async def test_ne_mo_fails_closed_when_judge_output_is_invalid():
+    guard = FinancialGuard(additional_detectors=[PolicyJudgeDetector(FakeBackend("not-json"))])
+
+    with pytest.raises(GuardUnavailable):
+        await guard.check("ordinary request")

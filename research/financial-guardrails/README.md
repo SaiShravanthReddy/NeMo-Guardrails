@@ -20,6 +20,13 @@ events, structured verdicts, detect/enforce modes, custom NeMo actions, retrieva
 screening, and a guarded tool boundary. Optional local-model adapters are disabled
 by default. No benchmark results have been produced.
 
+The policy-reading LLM judge contract is implemented in
+[`financial_guardrails/judge.py`](financial_guardrails/judge.py). Its exact written
+policy is [`policies/llm_judge_v1.yml`](policies/llm_judge_v1.yml). It validates a
+strict JSON response, rejects unknown policy IDs, applies a timeout, and enters the
+same deterministic aggregation path as every other detector. No live judge backend
+or model is selected yet, so the default profile still makes no model calls.
+
 ## Run the offline baseline
 
 From this directory, with `uv` installed:
@@ -71,6 +78,12 @@ version control. Store large artifacts on the approved HiPerGator storage tier;
 track their versions and checksums in small manifests. Commit reviewed aggregate
 reports and synthetic test fixtures only when their provenance and permissions
 are clear.
+
+The supplied exports are loaded with `cnfinbench_adapter` and `finvault_adapter`.
+The FinVault adapter preserves agent actions as tool calls and environment messages
+as tool results. It does not execute those actions. The binary metric helper requires
+the positive label to be specified explicitly and reports detector failures outside
+the confusion matrix.
 
 Use relative links between project documents, update them when files move, and
 commit each reviewed change as a focused checkpoint. Keep experiment revisions

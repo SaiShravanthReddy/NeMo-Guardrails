@@ -73,17 +73,24 @@ checks. HiPerGator model execution and dataset-specific adapters remain pending.
   HiPerGator SHA-256 checksums.
 - [x] Add daily fork synchronization for `develop` and this research branch, with
   tests required before the research branch is pushed.
+- [x] Add a provider-independent LLM-judge prompt, written policy, structured
+  response validation, timeout, malformed-response handling, and fail-closed tests.
+- [x] Verify that the same optional judge detector runs through direct and NeMo paths.
+- [x] Build and validate CNFinBench and FinVault adapters over every supplied record,
+  preserving FinVault tool calls and tool results.
+- [x] Add failure-aware binary metrics that require an explicit positive label.
+- [x] Add an application hook for screening untrusted tool descriptions.
 - [ ] Confirm whether the required LLM judge will run locally on HiPerGator or
   through Navigator, and confirm the judge model and policy rubric with the team.
-- [ ] Implement the LLM-judge prompt, structured response schema, adapter, timeout,
-  malformed-response handling, and fail-closed behavior.
+- [ ] Implement and validate the selected live judge backend without logging raw
+  benchmark content or sending sensitive data to an unapproved service.
 - [ ] Run selected model weights on `hpg-turin` and record measured memory, latency,
   and fixture quality. Requires HiPerGator access during execution.
-- [ ] Build dataset-specific adapters that preserve complete conversations, labels,
-  metadata, and case IDs for CNFinBench and FinVault.
+- [ ] Convert preserved FinVault action strings into validated tool names and
+  arguments only after the static-replay versus interactive-protocol decision.
 - [ ] Define leakage-safe development, calibration, and final evaluation splits.
-- [ ] Add evaluation metrics and result manifests for security detection, benign
-  false positives, detector failures, latency, and resource usage.
+- [ ] Add result manifests, checkpointing, latency measurements, and resource usage
+  to the evaluation runner.
 - [ ] Run CPU and API/GPU preflight checks, then a small stratified pilot. Review
   outputs before approving a full benchmark run.
 - [ ] Run the approved full evaluations and produce a reproducible aggregate report.

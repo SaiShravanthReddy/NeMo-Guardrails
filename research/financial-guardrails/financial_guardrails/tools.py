@@ -33,6 +33,19 @@ class ToolConfirmationRequired(PermissionError):
     pass
 
 
+def screen_tool_description(guard: FinancialGuard, name: str, description: str):
+    """Screen third-party tool metadata before exposing the tool to an agent."""
+    event = SecurityEvent(
+        event_id=f"tool-description:{name}",
+        surface=Surface.TOOL_DESCRIPTION,
+        source_role=SourceRole.TOOL,
+        trust=TrustLevel.UNTRUSTED,
+        content=description,
+        tool_name=name,
+    )
+    return guard.evaluate(event)
+
+
 @dataclass(frozen=True)
 class Principal:
     subject: str
