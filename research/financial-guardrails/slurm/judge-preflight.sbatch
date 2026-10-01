@@ -53,4 +53,4 @@ for _attempt in $(seq 1 120); do
 done
 
 curl --fail --silent http://127.0.0.1:8000/health >/dev/null
-"${PROJECT_PYTHON}" scripts/judge_preflight.py --backend hipergator --timeout 120
+"${PROJECT_PYTHON}" -m scripts.judge_preflight --backend hipergator --timeout 120

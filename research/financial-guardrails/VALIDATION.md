@@ -98,3 +98,20 @@ Date: 2026-10-01
 No metric in this update is a benchmark result. Sanitization quality, task utility,
 authorization correctness, and attack prevention remain unavailable until their
 required ground truth or interactive environment exists.
+
+## Static evaluation and HiPerGator handoff
+
+Date: 2026-10-01
+
+- Safely parsed all 4,838 recorded FinVault actions without importing or executing
+  any named tool.
+- Generated group-disjoint splits for all 642 CNFinBench and 1,043 FinVault cases.
+- Completed rules-only pilot replays: 48 CNFinBench and 64 FinVault cases, with no
+  detector failures. These are engineering checks of the runner, not final efficacy
+  claims.
+- Completed rules-only full static replays over all 642 CNFinBench and 1,043
+  FinVault cases with no detector failures. FinVault flagged every case because
+  its recorded tools are not yet in the application allowlist. This correctly
+  exposes a policy-integration blocker and is not an efficacy result.
+- The local readiness check verified dataset checksums, metadata, adapters, action
+  parsing, the pinned Qwen revision, and both SLURM scripts.
