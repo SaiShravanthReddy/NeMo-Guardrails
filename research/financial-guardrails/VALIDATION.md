@@ -128,3 +128,13 @@ Date: 2026-10-01
   under-reporting, and dual-contract boolean arguments across 27 tools.
 - The full rules-only replay completed all 1,043 cases without detector failures.
   Its scores are diagnostic baseline measurements, not commercial Lakera results.
+
+## HiPerGator deployment correction
+
+Date: 2026-10-01
+
+The first local-model preflight (`44275641`) failed before serving because
+FlashInfer attempted JIT compilation and the isolated vLLM environment did not
+contain `ninja`. The environment setup now pins `ninja==1.13.0`; readiness and both
+GPU job scripts verify its executable before GPU initialization. No model verdict
+or benchmark result was produced by the failed job.

@@ -67,6 +67,8 @@ def main() -> None:
                 raise SystemExit(f"FAIL: required HiPerGator command is unavailable: {executable}")
         if not Path(".venv-vllm/bin/vllm").is_file():
             raise SystemExit("FAIL: .venv-vllm/bin/vllm is unavailable")
+        if not Path(".venv-vllm/bin/ninja").is_file():
+            raise SystemExit("FAIL: .venv-vllm/bin/ninja is unavailable")
     print(
         f"READY: {len(cnfinbench)} CNFinBench cases, {len(finvault)} FinVault cases, "
         f"{tool_calls} safe-parsed tool calls, pinned model {spec.model}@{spec.revision}"

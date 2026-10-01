@@ -17,12 +17,14 @@ set -euo pipefail
 SPLIT="${SPLIT:-pilot}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 VLLM_BIN="${PROJECT_ROOT}/.venv-vllm/bin/vllm"
+NINJA_BIN="${PROJECT_ROOT}/.venv-vllm/bin/ninja"
 PROJECT_PYTHON="${PROJECT_ROOT}/.venv/bin/python"
 MODEL_ID="Qwen/Qwen3-8B-AWQ"
 MODEL_REVISION="4da05a8edb55c6046cce958586c33b61da07bb79"
 SERVER_LOG="${PROJECT_ROOT}/logs/vllm-${SLURM_JOB_ID}.log"
 
 test -x "${VLLM_BIN}"
+test -x "${NINJA_BIN}"
 test -x "${PROJECT_PYTHON}"
 cd "${PROJECT_ROOT}"
 mkdir -p logs outputs
