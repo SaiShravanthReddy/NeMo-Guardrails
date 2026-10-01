@@ -97,11 +97,12 @@ isolated because its GPU dependency stack is large and platform-specific:
 cd "$OPEN_LAKERA_REPO/research/financial-guardrails"
 uv sync --locked
 uv venv --python 3.11 .venv-vllm
-uv pip install --python .venv-vllm/bin/python 'vllm==0.30.0'
+uv pip install --python .venv-vllm/bin/python 'vllm==0.30.0' 'ninja==1.13.0'
 .venv-vllm/bin/vllm --version
 ```
 
-The recorded version must be `0.30.0`. If installation fails because of the
+The recorded vLLM version must be `0.30.0`; `ninja==1.13.0` is required by
+FlashInfer's runtime JIT compilation. If installation fails because of the
 compute node's CUDA driver or Python compatibility, stop and retain the full error;
 do not replace the pinned package during the experiment.
 
