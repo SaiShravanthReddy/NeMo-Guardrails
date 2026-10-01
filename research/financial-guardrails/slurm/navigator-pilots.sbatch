@@ -13,6 +13,11 @@
 set -euo pipefail
 
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
+DATASET="${DATASET:-cnfinbench-pooled}"
+case "${DATASET}" in
+  cnfinbench-pooled|finvault-v5-fixed-full) ;;
+  *) echo "Unsupported DATASET: ${DATASET}" >&2; exit 2 ;;
+esac
 cd "${PROJECT_ROOT}"
 mkdir -p logs outputs
 
@@ -22,22 +27,22 @@ source .env.local
 set +a
 test -n "${NAVIGATOR_TOOLKIT_API_KEY:-}"
 
-echo "MILESTONE 1/5: validating NaviGator before cascade pilot"
+echo "MILESTONE 1/5: validating NaviGator before ${DATASET} cascade pilot"
 .venv/bin/python -m scripts.judge_preflight --backend navigator
 
-echo "MILESTONE 2/5: running rules-first cascade pilot"
-.venv/bin/python -m scripts.run_static_evaluation cnfinbench-pooled \
+echo "MILESTONE 2/5: running ${DATASET} rules-first cascade pilot"
+.venv/bin/python -m scripts.run_static_evaluation "${DATASET}" \
   --split pilot \
   --judge-mode rules_first_cascade \
   --backend navigator
 
-echo "MILESTONE 3/5: revalidating NaviGator before all-events pilot"
+echo "MILESTONE 3/5: revalidating NaviGator before ${DATASET} all-events pilot"
 .venv/bin/python -m scripts.judge_preflight --backend navigator
 
-echo "MILESTONE 4/5: running all-events pilot"
-.venv/bin/python -m scripts.run_static_evaluation cnfinbench-pooled \
+echo "MILESTONE 4/5: running ${DATASET} all-events pilot"
+.venv/bin/python -m scripts.run_static_evaluation "${DATASET}" \
   --split pilot \
   --judge-mode all_events \
   --backend navigator
 
-echo "MILESTONE 5/5: both NaviGator pilots completed"
+echo "MILESTONE 5/5: both ${DATASET} NaviGator pilots completed"

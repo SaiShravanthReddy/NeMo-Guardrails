@@ -108,7 +108,8 @@ do not replace the pinned package during the experiment.
 ### Unattended NaviGator pilots
 
 `slurm/navigator-pilots.sbatch` runs a live two-fixture preflight before each pilot,
-then runs the cascade and all-events CNFinBench pilot conditions. It stops on the
+then runs the cascade and all-events pilot conditions for the dataset selected with
+`DATASET` (CNFinBench by default). It stops on the
 first failure, checkpoints after every completed case, prints progress every 10%,
 and requests SLURM mail for job start, completion, or failure. Supply the email
 address at submission time; do not commit it or the API key.
