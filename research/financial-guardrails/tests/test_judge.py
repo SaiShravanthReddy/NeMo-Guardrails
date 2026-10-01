@@ -45,6 +45,18 @@ class FakeBackend:
         return self.response
 
 
+class SequenceBackend:
+    name = "sequence"
+
+    def __init__(self, responses):
+        self.responses = iter(responses)
+        self.prompts = []
+
+    def complete(self, prompt):
+        self.prompts.append(prompt)
+        return next(self.responses)
+
+
 def response(decision="allow", **updates):
     payload = {
         "decision": decision,
@@ -77,6 +89,30 @@ def test_judge_allow_is_a_valid_detector_result():
 
     assert result.decision is Decision.ALLOW
     assert result.risk_score == 0.1
+
+
+def test_judge_repairs_one_invalid_response_without_relaxing_policy_validation():
+    backend = SequenceBackend(
+        [
+            response("allow", policy_ids=["INJ-01"]),
+            response(),
+        ]
+    )
+
+    result = PolicyJudgeDetector(backend).detect(event())
+
+    assert result.decision is Decision.ALLOW
+    assert len(backend.prompts) == 2
+    assert "REPAIR_REQUIRED" in backend.prompts[1]
+
+
+def test_judge_fails_closed_after_one_invalid_repair_attempt():
+    backend = SequenceBackend([response("allow", policy_ids=["INJ-01"])] * 2)
+
+    verdict = PolicyEngine(additional_detectors=[PolicyJudgeDetector(backend)]).evaluate(event())
+
+    assert verdict.detector_error
+    assert verdict.decision is Decision.REQUIRE_CONFIRMATION
 
 
 def test_judge_block_is_combined_with_rules():
