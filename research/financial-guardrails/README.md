@@ -2,7 +2,9 @@
 
 Implement policies derived from Lakera's public documentation with NeMo Guardrails,
 local models, rules, and custom classifiers. The core pipeline uses no paid APIs.
-Future evaluation will use CNFinBench and FinVault after their files are supplied.
+The supplied CNFinBench and FinVault exports are staged locally outside Git and
+have passed initial integrity and schema checks. Dataset-specific execution and
+scoring adapters remain to be implemented before evaluation.
 
 ## Project documents
 
