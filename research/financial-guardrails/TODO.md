@@ -55,7 +55,7 @@ actual blockers without marking unperformed verification as passed.
 
 ## 2. Expand the baseline into Open Lakera
 
-Status: implementation passed locally on 2026-10-01 with 97 offline tests.
+Status: implementation passed locally on 2026-10-01 with 115 offline tests.
 The supplied datasets passed local readability, checksum, schema, and record-count
 checks. Dataset adapters are implemented; live HiPerGator model execution remains pending.
 
@@ -91,6 +91,9 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   and rules-first cascade modes.
 - [x] Implement and offline-test one OpenAI-compatible backend client for both
   selected services without logging raw benchmark content or provider bodies.
+- [x] Add continuous judge risk scores, comprehensive metric calculations,
+  content-free per-case telemetry, confidence intervals, paired comparisons, and
+  atomic result artifacts so reporting choices do not require repeated inference.
 - [ ] Run the two-fixture live preflight against NaviGator and record model access,
   structured-output behavior, latency, and current account budget.
 - [ ] Run selected model weights on `hpg-turin` and record measured memory, latency,
@@ -98,8 +101,8 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 - [ ] Convert preserved FinVault action strings into validated tool names and
   arguments only after the static-replay versus interactive-protocol decision.
 - [ ] Define leakage-safe development, calibration, and final evaluation splits.
-- [ ] Add result manifests, checkpointing, latency measurements, and resource usage
-  to the evaluation runner.
+- [ ] Wire the validated result manifests, metrics, checkpointing, latency, and
+  resource fields into the evaluation runner.
 - [ ] Run CPU and API/GPU preflight checks, then a small stratified pilot. Review
   outputs before approving a full benchmark run.
 - [ ] Run the approved full evaluations and produce a reproducible aggregate report.

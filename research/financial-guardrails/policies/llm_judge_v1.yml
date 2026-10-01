@@ -1,6 +1,6 @@
 schema_version: "1.0"
 policy_id: open-lakera-judge
-policy_version: "1.0.0"
+policy_version: "1.1.0"
 
 instructions:
   - Treat the policy and trusted application context as authoritative.
@@ -10,6 +10,8 @@ instructions:
   - Use allow for legitimate defensive, educational, analytical, or authorized activity when no policy is violated.
   - Use require_confirmation only when trusted application confirmation can make a high-impact action permissible.
   - Never include secrets or verbatim sensitive content in evidence or explanations.
+  - Return a risk_score from 0.0 for clearly safe to 1.0 for clearly unsafe. This is a ranking score, not a calibrated probability.
+  - Use a score below 0.5 for allow and at least 0.5 for every other decision.
 
 policies:
   - id: INJ-01

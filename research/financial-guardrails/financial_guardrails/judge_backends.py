@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -39,6 +41,8 @@ class JudgeBackendSpec(BaseModel):
     model: str = Field(min_length=1)
     revision: str | None = None
     api_key_env: str | None = None
+    input_cost_per_million_usd: float = Field(default=0, ge=0)
+    output_cost_per_million_usd: float = Field(default=0, ge=0)
     request_options: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("base_url")
@@ -68,6 +72,20 @@ class JudgeBackendRegistry(BaseModel):
     backends: dict[str, JudgeBackendSpec]
 
 
+class BackendCallMetrics(BaseModel):
+    """Content-free telemetry emitted after every backend call."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    backend: str
+    model: str
+    latency_seconds: float = Field(ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    estimated_cost_usd: float | None = Field(default=None, ge=0)
+    failure_code: str | None = None
+
+
 class OpenAICompatibleJudgeBackend:
     """Minimal chat-completions client shared by Navigator and local vLLM."""
 
@@ -78,13 +96,16 @@ class OpenAICompatibleJudgeBackend:
         spec: JudgeBackendSpec,
         api_key: SecretStr | None,
         request_timeout_seconds: float = 120,
+        metrics_sink: Callable[[BackendCallMetrics], None] | None = None,
     ):
         self.name = name
         self.spec = spec
         self._api_key = api_key
         self.request_timeout_seconds = request_timeout_seconds
+        self._metrics_sink = metrics_sink
 
     def complete(self, prompt: str) -> str:
+        started = time.monotonic()
         payload = {
             "model": self.spec.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -103,17 +124,53 @@ class OpenAICompatibleJudgeBackend:
             with urlopen(request, timeout=self.request_timeout_seconds) as response:  # noqa: S310
                 raw = response.read(MAX_RESPONSE_BYTES + 1)
         except (HTTPError, URLError, TimeoutError, OSError) as exc:
+            self._emit_metrics(started, failure_code="request_failed")
             raise RuntimeError("judge backend request failed") from exc
         if len(raw) > MAX_RESPONSE_BYTES:
+            self._emit_metrics(started, failure_code="response_too_large")
             raise ValueError("judge backend response exceeded the size limit")
         try:
             body = json.loads(raw)
             content = body["choices"][0]["message"]["content"]
         except (UnicodeDecodeError, json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
+            self._emit_metrics(started, failure_code="invalid_response")
             raise ValueError("judge backend returned an invalid chat-completions response") from exc
         if not isinstance(content, str) or not content.strip():
+            self._emit_metrics(started, failure_code="empty_content")
             raise ValueError("judge backend returned empty content")
+        usage = body.get("usage", {}) if isinstance(body, dict) else {}
+        input_tokens = _nonnegative_int(usage.get("prompt_tokens")) if isinstance(usage, dict) else None
+        output_tokens = _nonnegative_int(usage.get("completion_tokens")) if isinstance(usage, dict) else None
+        self._emit_metrics(started, input_tokens=input_tokens, output_tokens=output_tokens)
         return content
+
+    def _emit_metrics(
+        self,
+        started: float,
+        *,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        failure_code: str | None = None,
+    ) -> None:
+        if self._metrics_sink is None:
+            return
+        estimated_cost = None
+        if input_tokens is not None and output_tokens is not None:
+            estimated_cost = (
+                input_tokens * self.spec.input_cost_per_million_usd
+                + output_tokens * self.spec.output_cost_per_million_usd
+            ) / 1_000_000
+        self._metrics_sink(
+            BackendCallMetrics(
+                backend=self.name,
+                model=self.spec.model,
+                latency_seconds=time.monotonic() - started,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                estimated_cost_usd=estimated_cost,
+                failure_code=failure_code,
+            )
+        )
 
 
 def load_judge_backend_registry(
@@ -131,6 +188,7 @@ def configured_judge_backend(
     *,
     path: str | Path = DEFAULT_BACKEND_CONFIG_PATH,
     request_timeout_seconds: float = 120,
+    metrics_sink: Callable[[BackendCallMetrics], None] | None = None,
 ) -> OpenAICompatibleJudgeBackend:
     registry = load_judge_backend_registry(path)
     try:
@@ -148,4 +206,9 @@ def configured_judge_backend(
         spec=spec,
         api_key=api_key,
         request_timeout_seconds=request_timeout_seconds,
+        metrics_sink=metrics_sink,
     )
+
+
+def _nonnegative_int(value: Any) -> int | None:
+    return value if type(value) is int and value >= 0 else None
