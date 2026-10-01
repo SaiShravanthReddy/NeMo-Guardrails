@@ -57,6 +57,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
     parser.add_argument("--resume-checkpoint", type=Path)
     parser.add_argument("--inference-code-commit")
+    parser.add_argument("--judge-policy-sha256")
     parser.add_argument("--bootstrap-iterations", type=int, default=1000)
     args = parser.parse_args()
     if (args.judge_mode == "rules_only") != (args.backend == "rules_only"):
@@ -80,7 +81,9 @@ def main() -> None:
     dataset_sha256 = inspect_json_dataset(adapter.data_path).sha256
     metadata_sha256 = _sha256(adapter.metadata_path)
     policy_sha256 = _sha256(DEFAULT_POLICY_PATH)
-    judge_policy_sha256 = _sha256(DEFAULT_JUDGE_POLICY_PATH)
+    judge_policy_sha256 = args.judge_policy_sha256 or _sha256(DEFAULT_JUDGE_POLICY_PATH)
+    if args.judge_policy_sha256 and not _valid_sha256(args.judge_policy_sha256):
+        parser.error("--judge-policy-sha256 must be a 64-character lowercase SHA-256 digest")
     benchmark_policy_sha256 = (
         _sha256(DEFAULT_FINVAULT_POLICY_PATH) if args.dataset == "finvault-v5-fixed-full" else None
     )
@@ -173,6 +176,10 @@ def _git_commit() -> str:
 
 def _valid_commit(value: str) -> bool:
     return len(value) == 40 and all(character in "0123456789abcdef" for character in value)
+
+
+def _valid_sha256(value: str) -> bool:
+    return len(value) == 64 and all(character in "0123456789abcdef" for character in value)
 
 
 def _inference_elapsed_seconds(records: tuple[EvaluationRecord, ...]) -> float:
