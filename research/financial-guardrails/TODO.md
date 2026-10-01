@@ -55,9 +55,9 @@ actual blockers without marking unperformed verification as passed.
 
 ## 2. Expand the baseline into Open Lakera
 
-Status: implementation passed locally on 2026-09-30 with 65 offline tests.
+Status: implementation passed locally on 2026-10-01 with 88 offline tests.
 The supplied datasets passed local readability, checksum, schema, and record-count
-checks. HiPerGator model execution and dataset-specific adapters remain pending.
+checks. Dataset adapters are implemented; live HiPerGator model execution remains pending.
 
 - [x] Add versioned machine-readable policy configuration.
 - [x] Add role-aware events and structured verdicts.
@@ -82,6 +82,10 @@ checks. HiPerGator model execution and dataset-specific adapters remain pending.
 - [x] Verify from the source converters that label `1` means unsafe in both supplied
   exports and document the FinVault outcome-versus-interception mismatch.
 - [x] Add an application hook for screening untrusted tool descriptions.
+- [x] Define two LLM-judge conditions: judge every applicable interaction and judge
+  only cases unresolved by deterministic rules.
+- [x] Define two separately reported FinVault tasks: completed-outcome safety and
+  runtime malicious-attempt interception.
 - [ ] Confirm whether the required LLM judge will run locally on HiPerGator or
   through Navigator, and confirm the judge model and policy rubric with the team.
 - [ ] Implement and validate the selected live judge backend without logging raw
@@ -91,8 +95,6 @@ checks. HiPerGator model execution and dataset-specific adapters remain pending.
 - [ ] Convert preserved FinVault action strings into validated tool names and
   arguments only after the static-replay versus interactive-protocol decision.
 - [ ] Define leakage-safe development, calibration, and final evaluation splits.
-- [ ] Confirm whether FinVault's primary result is outcome safety, runtime attack
-  interception, or both. If both, publish them as separate tasks and denominators.
 - [ ] Add result manifests, checkpointing, latency measurements, and resource usage
   to the evaluation runner.
 - [ ] Run CPU and API/GPU preflight checks, then a small stratified pilot. Review
