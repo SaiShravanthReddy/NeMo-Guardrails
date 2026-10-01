@@ -157,6 +157,7 @@ class Verdict(BaseModel):
     explanation: str
     detector_error: bool
     detector_statuses: dict[str, DetectorStatus]
+    detector_error_codes: dict[str, str] = Field(default_factory=dict)
     content: str
     risk_score: float | None = Field(default=None, ge=0, le=1)
 

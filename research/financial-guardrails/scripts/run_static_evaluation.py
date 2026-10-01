@@ -31,7 +31,12 @@ from pathlib import Path
 
 from financial_guardrails.configuration import DEFAULT_POLICY_PATH, load_policy
 from financial_guardrails.datasets import cnfinbench_adapter, finvault_adapter, inspect_json_dataset
-from financial_guardrails.evaluation import bootstrap_confidence_intervals, score_slices, summarize_records
+from financial_guardrails.evaluation import (
+    EvaluationRecord,
+    bootstrap_confidence_intervals,
+    score_slices,
+    summarize_records,
+)
 from financial_guardrails.finvault_policy import DEFAULT_FINVAULT_POLICY_PATH
 from financial_guardrails.judge import DEFAULT_JUDGE_POLICY_PATH
 from financial_guardrails.judge_backends import load_judge_backend_registry
@@ -140,11 +145,12 @@ def main() -> None:
             else {}
         ),
         bootstrap_iterations=args.bootstrap_iterations,
+        inference_elapsed_seconds=_inference_elapsed_seconds(records),
     )
     artifact = EvaluationArtifact(
         manifest=manifest,
         records=records,
-        metrics=summarize_records(records, run_elapsed_seconds=(completed - started).total_seconds()),
+        metrics=summarize_records(records, run_elapsed_seconds=_inference_elapsed_seconds(records)),
         confidence_intervals=bootstrap_confidence_intervals(records, iterations=args.bootstrap_iterations),
         slice_metrics={key: score_slices(records, key) for key in ("split", "risk_type", "behavior_mode")},
     )
@@ -167,6 +173,10 @@ def _git_commit() -> str:
 
 def _valid_commit(value: str) -> bool:
     return len(value) == 40 and all(character in "0123456789abcdef" for character in value)
+
+
+def _inference_elapsed_seconds(records: tuple[EvaluationRecord, ...]) -> float:
+    return sum(record.latency_seconds or 0 for record in records)
 
 
 class _MilestoneReporter:

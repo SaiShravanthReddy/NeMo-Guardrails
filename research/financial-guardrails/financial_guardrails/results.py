@@ -67,6 +67,7 @@ class ExperimentManifest(BaseModel):
     bootstrap_confidence_level: float = Field(default=0.95, gt=0, lt=1)
     bootstrap_seed: int = 0
     bootstrap_group_slice_key: str | None = None
+    inference_elapsed_seconds: float | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_times(self):
@@ -94,7 +95,9 @@ class EvaluationArtifact(BaseModel):
             raise ValueError("artifact contains a record from another dataset")
         if any(record.positive_label != self.manifest.positive_label for record in self.records):
             raise ValueError("artifact positive labels do not match the manifest")
-        elapsed = (self.manifest.completed_at - self.manifest.started_at).total_seconds()
+        elapsed = self.manifest.inference_elapsed_seconds
+        if elapsed is None:
+            elapsed = (self.manifest.completed_at - self.manifest.started_at).total_seconds()
         if self.metrics != summarize_records(self.records, run_elapsed_seconds=elapsed):
             raise ValueError("artifact metrics do not match its records")
         for slice_key, metrics_by_value in self.slice_metrics.items():
