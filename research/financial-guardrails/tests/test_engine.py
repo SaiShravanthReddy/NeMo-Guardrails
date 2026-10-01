@@ -98,6 +98,7 @@ def test_detector_failure_never_allows_ordinary_event():
     verdict = PolicyEngine(detectors=[BrokenDetector()]).evaluate(event("hello"))
 
     assert verdict.detector_error
+    assert verdict.detector_error_codes == {"broken": "invalid_detector_result"}
     assert verdict.decision is Decision.REQUIRE_CONFIRMATION
 
 

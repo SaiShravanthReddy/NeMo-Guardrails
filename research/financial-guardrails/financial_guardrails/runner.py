@@ -145,7 +145,10 @@ def _case_record(
         }.items()
         if value is not None
     }
-    failure_code = "detector_error" if detector_error else None
+    error_codes = sorted(
+        {code for _turn, _surface, verdict, _rules in verdicts for code in verdict.detector_error_codes.values()}
+    )
+    failure_code = error_codes[0] if len(error_codes) == 1 else "multiple_detector_errors" if error_codes else None
     return EvaluationRecord(
         dataset_key=case.dataset_key,
         case_id=case.case_id,

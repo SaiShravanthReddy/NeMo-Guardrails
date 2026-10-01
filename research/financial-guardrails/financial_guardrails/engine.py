@@ -76,7 +76,7 @@ class PolicyEngine:
                 result = detector.detect(event)
                 if not isinstance(result, DetectorResult):
                     raise TypeError("detector returned an invalid result")
-            except Exception:
+            except Exception as exc:
                 result = DetectorResult(
                     detector=detector.name,
                     status=DetectorStatus.ERROR,
@@ -85,7 +85,7 @@ class PolicyEngine:
                     risk_category=RiskCategory.DETECTOR_FAILURE,
                     evidence=(Evidence(detector=detector.name, rule_id="DETECTOR-ERROR", summary="detector failed"),),
                     explanation="A required detector did not return a valid decision.",
-                    error_code="detector_failure",
+                    error_code=_detector_error_code(exc),
                 )
             results.append(result)
 
@@ -121,6 +121,11 @@ class PolicyEngine:
             explanation=primary.explanation if primary else "No configured policy matched.",
             detector_error=any(result.status is DetectorStatus.ERROR for result in results),
             detector_statuses={result.detector: result.status for result in results},
+            detector_error_codes={
+                result.detector: result.error_code or "detector_failure"
+                for result in results
+                if result.status is DetectorStatus.ERROR
+            },
             content=content,
             risk_score=max(
                 (result.risk_score for result in results if result.risk_score is not None),
@@ -134,3 +139,18 @@ class PolicyEngine:
             *self.config.tools.denied,
         }
         return self.config.failure_policy.high_impact if high_impact else self.config.failure_policy.ordinary
+
+
+def _detector_error_code(exc: Exception) -> str:
+    if isinstance(exc, TimeoutError):
+        return "detector_timeout"
+    if isinstance(exc, TypeError):
+        return "invalid_detector_result"
+    message = str(exc).lower()
+    if "malformed output" in message:
+        return "malformed_judge_output"
+    if "unknown policy id" in message or "risk category inconsistent" in message:
+        return "invalid_judge_policy_reference"
+    if "backend request failed" in message:
+        return "judge_backend_request_failed"
+    return "detector_failure"
