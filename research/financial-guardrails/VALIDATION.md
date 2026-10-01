@@ -149,3 +149,9 @@ the backend uses a nested `response_format` object. The schema now accepts recur
 JSON values and has a live-backend-shaped regression test. Explicit checkpoint and
 inference-commit options allow the completed content-free checkpoint to be finalized
 without repeating provider calls.
+
+The second local-model preflight (`44279980`) found the pinned `ninja` executable
+but vLLM's FlashInfer child process could not resolve it because the isolated
+environment's `bin` directory was absent from `PATH`. Both GPU scripts now prepend
+that directory, verify `command -v ninja` resolves to the pinned executable, and run
+`ninja --version` before starting vLLM.
