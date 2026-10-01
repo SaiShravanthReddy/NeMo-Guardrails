@@ -3,8 +3,8 @@
 Implement policies derived from Lakera's public documentation with NeMo Guardrails,
 local models, rules, and custom classifiers. The core pipeline uses no paid APIs.
 The supplied CNFinBench and FinVault exports are staged locally outside Git and
-have passed initial integrity and schema checks. Dataset-specific execution and
-scoring adapters remain to be implemented before evaluation.
+have passed integrity, schema, and adapter checks. The live execution runner,
+leakage-safe splits, checkpoints, and pilots remain to be completed before evaluation.
 
 ## Project documents
 
@@ -14,6 +14,8 @@ scoring adapters remain to be implemented before evaluation.
 - [Architecture](ARCHITECTURE.md): event/verdict contracts, precedence, modes, and failures.
 - [NeMo hooks](NEMO_HOOKS.md): exact supported integration points and limitations.
 - [Model decision](MODELS.md): pinned optional models, licenses, size, and hardware.
+- [Judge runbook](JUDGE_RUNBOOK.md): selected NaviGator and HiPerGator backends,
+  matched experiment conditions, and preflight commands.
 
 The implementation includes deterministic defenses, versioned policies, role-aware
 events, structured verdicts, detect/enforce modes, custom NeMo actions, retrieval
@@ -24,8 +26,10 @@ The policy-reading LLM judge contract is implemented in
 [`financial_guardrails/judge.py`](financial_guardrails/judge.py). Its exact written
 policy is [`policies/llm_judge_v1.yml`](policies/llm_judge_v1.yml). It validates a
 strict JSON response, rejects unknown policy IDs, applies a timeout, and enters the
-same deterministic aggregation path as every other detector. No live judge backend
-or model is selected yet, so the default profile still makes no model calls.
+same deterministic aggregation path as every other detector. The selected backends
+are NaviGator `gpt-oss-120b` and local HiPerGator `Qwen/Qwen3-8B-AWQ`. They share
+one OpenAI-compatible client and remain disabled in the default profile, so offline
+commands make no model calls.
 
 ## Run the offline baseline
 

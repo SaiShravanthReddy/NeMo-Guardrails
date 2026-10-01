@@ -7,5 +7,6 @@ __pycache__/
 artifacts/
 models/*
 !models/local_models.yml
+!models/judge_backends.yml
 data/
 outputs/

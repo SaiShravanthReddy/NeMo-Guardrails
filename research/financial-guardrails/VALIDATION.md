@@ -61,3 +61,22 @@ Source-converter review confirmed that label `1` is unsafe for both exports. It 
 confirmed that FinVault full label `0` combines benign and defended cases, while
 label `1` represents successful attacks. This prevents using the full label directly
 as an attack-attempt interception label without a separately documented derived view.
+
+## Dual-backend update
+
+Date: 2026-10-01
+
+- Selected NaviGator `gpt-oss-120b` and local HiPerGator
+  `Qwen/Qwen3-8B-AWQ` at immutable revision
+  `4da05a8edb55c6046cce958586c33b61da07bb79`.
+- Added a shared OpenAI-compatible client with environment-only credentials,
+  HTTPS or loopback URL validation, bounded responses, strict response extraction,
+  and provider-error redaction.
+- Added offline tests for request shape, credential requirements, endpoint safety,
+  configuration validation, provider failures, and local model revision loading.
+- Full offline project suite: 97 passed with nine upstream deprecation warnings.
+- Ruff check, Ruff format check, ty, and repository pre-commit passed. The SLURM
+  script passed `bash -n`.
+
+No NaviGator request, model download, GPU allocation, or benchmark inference was
+performed. The two live fixture preflights remain required before any pilot.
