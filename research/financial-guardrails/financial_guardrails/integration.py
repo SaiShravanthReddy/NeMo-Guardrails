@@ -17,11 +17,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from contextvars import ContextVar
 from pathlib import Path
 
 from financial_guardrails.audit import AuditSink, InMemoryAuditSink
 from financial_guardrails.configuration import DEFAULT_POLICY_PATH, load_policy
+from financial_guardrails.detectors import Detector
 from financial_guardrails.engine import PolicyEngine
 from financial_guardrails.schema import Decision, Mode, SecurityEvent, SourceRole, Surface, TrustLevel, Verdict
 from nemoguardrails import RailsConfig
@@ -33,6 +35,7 @@ from nemoguardrails.rails.llm.options import RailStatus, RailType
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config"
 _audit: ContextVar[list[Verdict] | None] = ContextVar("open_lakera_audit", default=None)
 _mode: ContextVar[Mode | None] = ContextVar("open_lakera_mode", default=None)
+_engine: ContextVar[PolicyEngine | None] = ContextVar("open_lakera_engine", default=None)
 
 
 class GuardUnavailable(RuntimeError):
@@ -62,7 +65,7 @@ def register_policy_action(rails: LLMRails) -> None:
             trust=trust,
             content=text,
         )
-        verdict = engine.evaluate(event, _mode.get() or configured_mode)
+        verdict = (_engine.get() or engine).evaluate(event, _mode.get() or configured_mode)
         audit = _audit.get()
         if audit is not None:
             audit.append(verdict)
@@ -84,9 +87,10 @@ class FinancialGuard:
         policy_path: str | Path = DEFAULT_POLICY_PATH,
         mode: Mode | None = None,
         audit_sink: AuditSink | None = None,
+        additional_detectors: Iterable[Detector] = (),
     ):
         self.audit_sink = audit_sink or InMemoryAuditSink()
-        self.engine = PolicyEngine(load_policy(policy_path))
+        self.engine = PolicyEngine(load_policy(policy_path), additional_detectors=additional_detectors)
         self.mode = mode or self.engine.config.default_mode
         config = RailsConfig.from_path(str(config_path))
         if config.models:
@@ -110,6 +114,7 @@ class FinancialGuard:
         audit: list[Verdict] = []
         audit_token = _audit.set(audit)
         mode_token = _mode.set(self.mode)
+        engine_token = _engine.set(self.engine)
         try:
             role = "user" if direction == "input" else "assistant"
             rail_type = RailType.INPUT if direction == "input" else RailType.OUTPUT
@@ -145,5 +150,6 @@ class FinancialGuard:
         except Exception:
             raise GuardUnavailable("The financial guardrail could not complete") from None
         finally:
+            _engine.reset(engine_token)
             _mode.reset(mode_token)
             _audit.reset(audit_token)

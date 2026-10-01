@@ -34,5 +34,25 @@ an intake check, not a benchmark run.
 
 Both datasets contain unique case IDs and nested conversations whose messages use
 `role` and `content`. Each metadata sidecar has one entry per dataset record. The
-dataset files remain ignored by Git. Dataset-specific adapters, LLM-judge execution,
-calibration, scoring, and benchmark runs are still pending.
+dataset files remain ignored by Git. At that checkpoint, dataset-specific adapters,
+LLM-judge execution, calibration, scoring, and benchmark runs were still pending.
+
+## Blocker-removal update
+
+Date: 2026-10-01
+
+- Added a provider-independent policy-judge detector and the exact versioned policy
+  text supplied to it. Tests cover allow/block results, malformed output, unknown
+  policy IDs, timeout behavior, and direct/NeMo agreement using offline fakes.
+- Loaded all 642 CNFinBench and 1,043 FinVault records through strict adapters.
+  CNFinBench contains 15,408 ordinary messages. FinVault contains 1,043 ordinary
+  messages, 4,838 tool calls, and 4,838 tool results.
+- Added binary metrics that keep execution failures separate and require callers to
+  state which source label is positive.
+- Added application-boundary screening for tool descriptions because this fork does
+  not expose tool descriptions as a standalone `check_async` rail type.
+- Full offline project suite: 88 passed with nine upstream deprecation warnings.
+- Ruff check, Ruff format check, and ty check passed.
+
+No live LLM, external provider, model download, or benchmark evaluation was used in
+these checks. Selecting and validating the live judge remains pending.

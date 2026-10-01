@@ -16,6 +16,15 @@
 """Research guardrails; use FinancialGuard to validate content before releasing it."""
 
 from financial_guardrails.integration import FinancialGuard, GuardUnavailable
+from financial_guardrails.judge import PolicyJudgeDetector
 from financial_guardrails.schema import Decision, Mode, SecurityEvent, Verdict
 
-__all__ = ["Decision", "FinancialGuard", "GuardUnavailable", "Mode", "SecurityEvent", "Verdict"]
+__all__ = [
+    "Decision",
+    "FinancialGuard",
+    "GuardUnavailable",
+    "Mode",
+    "PolicyJudgeDetector",
+    "SecurityEvent",
+    "Verdict",
+]

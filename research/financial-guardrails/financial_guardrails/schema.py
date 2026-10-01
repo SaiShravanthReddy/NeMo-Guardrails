@@ -25,6 +25,7 @@ class Surface(str, Enum):
     SYSTEM = "system"
     INPUT = "input"
     RETRIEVAL = "retrieval"
+    TOOL_DESCRIPTION = "tool_description"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     OUTPUT = "output"
@@ -107,6 +108,7 @@ class SecurityEvent(BaseModel):
             Surface.SYSTEM: {SourceRole.SYSTEM},
             Surface.INPUT: {SourceRole.USER},
             Surface.RETRIEVAL: {SourceRole.RETRIEVED_CONTENT},
+            Surface.TOOL_DESCRIPTION: {SourceRole.TOOL},
             Surface.TOOL_CALL: {SourceRole.ASSISTANT},
             Surface.TOOL_RESULT: {SourceRole.TOOL},
             Surface.OUTPUT: {SourceRole.ASSISTANT},
@@ -115,8 +117,11 @@ class SecurityEvent(BaseModel):
             raise ValueError("source_role is incompatible with surface")
         if self.surface is Surface.SYSTEM and self.trust is not TrustLevel.TRUSTED:
             raise ValueError("system instructions must come from trusted application configuration")
-        if self.surface in (Surface.RETRIEVAL, Surface.TOOL_RESULT) and self.trust is not TrustLevel.UNTRUSTED:
-            raise ValueError("retrieval and tool results must be untrusted")
+        if (
+            self.surface in (Surface.RETRIEVAL, Surface.TOOL_DESCRIPTION, Surface.TOOL_RESULT)
+            and self.trust is not TrustLevel.UNTRUSTED
+        ):
+            raise ValueError("retrieval, tool descriptions, and tool results must be untrusted")
         if self.surface is Surface.TOOL_CALL and not self.tool_name:
             raise ValueError("tool calls require tool_name")
         return self
