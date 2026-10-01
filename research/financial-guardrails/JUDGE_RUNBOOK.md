@@ -54,7 +54,7 @@ cd research/financial-guardrails
 read -rs "NAVIGATOR_TOOLKIT_API_KEY?NaviGator API key: "
 echo
 export NAVIGATOR_TOOLKIT_API_KEY
-uv run --locked python scripts/judge_preflight.py --backend navigator
+uv run --locked python -m scripts.judge_preflight --backend navigator
 unset NAVIGATOR_TOOLKIT_API_KEY
 ```
 
@@ -141,5 +141,31 @@ Before either backend receives a full dataset, verify all of the following:
 - The NaviGator cost estimate fits the available account balance.
 - HiPerGator peak GPU memory and maximum input length pass on the selected L4 settings.
 
-The full-run commands will be added only after the evaluation runner, splits, and
-checkpoint format pass their offline and pilot tests.
+## 6. Evaluation jobs
+
+The runner replays recorded conversations without executing their tool calls. Its
+JSONL checkpoint is flushed after every case, and rerunning the same command resumes
+completed cases. Run the readiness check before submission:
+
+```bash
+cd "$OPEN_LAKERA_REPO/research/financial-guardrails"
+uv run --locked python -m scripts.check_hpg_readiness --require-hpg-tools
+mkdir -p logs outputs
+```
+
+Submit the pilot conditions one at a time so each result can be reviewed before a
+larger run:
+
+```bash
+DATASET=cnfinbench-pooled SPLIT=pilot JUDGE_MODE=rules_first_cascade \
+  sbatch --export=ALL,DATASET,SPLIT,JUDGE_MODE slurm/run-evaluation.sbatch
+
+DATASET=finvault-v5-fixed-full SPLIT=pilot JUDGE_MODE=rules_first_cascade \
+  sbatch --export=ALL,DATASET,SPLIT,JUDGE_MODE slurm/run-evaluation.sbatch
+```
+
+Repeat with `JUDGE_MODE=all_events` only after both cascade pilots pass. Replace
+`SPLIT=pilot` with `SPLIT=final` only after Professor Ivan confirms static replay
+as the evaluation protocol and the FinVault tool policy is reviewed. The job writes
+only content-free checkpoints and artifacts under `outputs/`; vLLM request logging
+is disabled.

@@ -98,11 +98,17 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   structured-output behavior, latency, and current account budget.
 - [ ] Run selected model weights on `hpg-turin` and record measured memory, latency,
   and fixture quality. Requires HiPerGator access during execution.
-- [ ] Convert preserved FinVault action strings into validated tool names and
-  arguments only after the static-replay versus interactive-protocol decision.
-- [ ] Define leakage-safe development, calibration, and final evaluation splits.
-- [ ] Wire the validated result manifests, metrics, checkpointing, latency, and
-  resource fields into the evaluation runner.
-- [ ] Run CPU and API/GPU preflight checks, then a small stratified pilot. Review
+- [x] Add a non-executing FinVault action parser and validate all 4,838 recorded
+  calls. Using it for the final study still depends on the static-replay versus
+  interactive-protocol decision.
+- [x] Define deterministic, source-group-disjoint development, calibration, pilot,
+  and final evaluation splits.
+- [x] Wire validated result manifests, metrics, per-case checkpointing, latency,
+  token/cost fields, and restart validation into the static replay runner.
+- [x] Run rules-only CPU pilot and full static replays on both datasets with 100%
+  execution coverage. FinVault currently flags every case because its benchmark
+  tool vocabulary is absent from the application policy; do not interpret that
+  run as efficacy or start its LLM evaluation until the tool policy is reviewed.
+- [ ] Run NaviGator and HiPerGator preflight checks, then the LLM pilot. Review
   outputs before approving a full benchmark run.
 - [ ] Run the approved full evaluations and produce a reproducible aggregate report.

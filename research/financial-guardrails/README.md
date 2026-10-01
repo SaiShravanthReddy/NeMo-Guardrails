@@ -3,8 +3,8 @@
 Implement policies derived from Lakera's public documentation with NeMo Guardrails,
 local models, rules, and custom classifiers. The core pipeline uses no paid APIs.
 The supplied CNFinBench and FinVault exports are staged locally outside Git and
-have passed integrity, schema, and adapter checks. The live execution runner,
-leakage-safe splits, checkpoints, and pilots remain to be completed before evaluation.
+have passed integrity, schema, adapter, split, and rules-only pilot checks. The
+static replay runner is ready for live judge preflights on HiPerGator and NaviGator.
 
 ## Project documents
 
@@ -21,8 +21,9 @@ leakage-safe splits, checkpoints, and pilots remain to be completed before evalu
 
 The implementation includes deterministic defenses, versioned policies, role-aware
 events, structured verdicts, detect/enforce modes, custom NeMo actions, retrieval
-screening, and a guarded tool boundary. Optional local-model adapters are disabled
-by default. No benchmark results have been produced.
+screening, a guarded tool boundary, group-disjoint splits, and resumable static
+evaluation. Optional local-model adapters are disabled by default. The rules-only
+pilot is an engineering validation; no LLM benchmark result has been produced.
 
 The policy-reading LLM judge contract is implemented in
 [`financial_guardrails/judge.py`](financial_guardrails/judge.py). Its exact written
@@ -41,6 +42,14 @@ From this directory, with `uv` installed:
 uv sync --locked
 uv run --locked python -m financial_guardrails
 uv run --locked pytest -q
+uv run --locked python -m scripts.check_hpg_readiness
+```
+
+Run a CPU-only static replay pilot with:
+
+```bash
+uv run --locked python -m scripts.run_static_evaluation \
+  cnfinbench-pooled --split pilot --judge-mode rules_only --backend rules_only
 ```
 
 The configuration entry point is [`config/config.yml`](config/config.yml), its

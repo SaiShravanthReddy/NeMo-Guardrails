@@ -1,17 +1,20 @@
 #!/bin/bash
-#SBATCH --job-name=open-lakera-judge-preflight
+#SBATCH --job-name=open-lakera-eval
 #SBATCH --account=iruchkin
 #SBATCH --qos=iruchkin
 #SBATCH --partition=hpg-turin
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --time=02:00:00
-#SBATCH --output=logs/judge-preflight-%j.out
-#SBATCH --error=logs/judge-preflight-%j.err
+#SBATCH --time=24:00:00
+#SBATCH --output=logs/evaluation-%j.out
+#SBATCH --error=logs/evaluation-%j.err
 
 set -euo pipefail
 
+: "${DATASET:?Set DATASET to cnfinbench-pooled or finvault-v5-fixed-full}"
+: "${JUDGE_MODE:?Set JUDGE_MODE to all_events or rules_first_cascade}"
+SPLIT="${SPLIT:-pilot}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 VLLM_BIN="${PROJECT_ROOT}/.venv-vllm/bin/vllm"
 PROJECT_PYTHON="${PROJECT_ROOT}/.venv/bin/python"
@@ -22,11 +25,11 @@ SERVER_LOG="${PROJECT_ROOT}/logs/vllm-${SLURM_JOB_ID}.log"
 test -x "${VLLM_BIN}"
 test -x "${PROJECT_PYTHON}"
 cd "${PROJECT_ROOT}"
+mkdir -p logs outputs
 
 export HF_HOME="${HF_HOME:-/blue/iruchkin/sa.madem/huggingface}"
 mkdir -p "${HF_HOME}"
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
-"${VLLM_BIN}" --version
 
 "${VLLM_BIN}" serve "${MODEL_ID}" \
   --revision "${MODEL_REVISION}" \
@@ -51,6 +54,9 @@ for _attempt in $(seq 1 120); do
   fi
   sleep 5
 done
-
 curl --fail --silent http://127.0.0.1:8000/health >/dev/null
-"${PROJECT_PYTHON}" -m scripts.judge_preflight --backend hipergator --timeout 120
+
+"${PROJECT_PYTHON}" -m scripts.run_static_evaluation "${DATASET}" \
+  --split "${SPLIT}" \
+  --judge-mode "${JUDGE_MODE}" \
+  --backend hipergator
