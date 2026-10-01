@@ -55,8 +55,9 @@ actual blockers without marking unperformed verification as passed.
 
 ## 2. Expand the baseline into Open Lakera
 
-Status: implementation passed locally on 2026-09-23 with 65 offline tests.
-HiPerGator model execution and dataset-specific adapters remain externally gated.
+Status: implementation passed locally on 2026-09-30 with 65 offline tests.
+The supplied datasets passed local readability, checksum, schema, and record-count
+checks. HiPerGator model execution and dataset-specific adapters remain pending.
 
 - [x] Add versioned machine-readable policy configuration.
 - [x] Add role-aware events and structured verdicts.
@@ -66,6 +67,23 @@ HiPerGator model execution and dataset-specific adapters remain externally gated
 - [x] Add optional pinned local-model interfaces and failure tests.
 - [x] Add claim-level coverage, architecture, hook, and model documentation.
 - [x] Add direct/NeMo equivalence and end-to-end smoke verification.
+- [x] Receive and inspect `cnfinbench-pooled` (642 records) and
+  `finvault-v5-fixed-full` (1,043 records), including their metadata sidecars.
+- [x] Keep benchmark data outside Git and verify that local copies match the
+  HiPerGator SHA-256 checksums.
+- [x] Add daily fork synchronization for `develop` and this research branch, with
+  tests required before the research branch is pushed.
+- [ ] Confirm whether the required LLM judge will run locally on HiPerGator or
+  through Navigator, and confirm the judge model and policy rubric with the team.
+- [ ] Implement the LLM-judge prompt, structured response schema, adapter, timeout,
+  malformed-response handling, and fail-closed behavior.
 - [ ] Run selected model weights on `hpg-turin` and record measured memory, latency,
   and fixture quality. Requires HiPerGator access during execution.
-- [ ] Build CNFinBench and FinVault adapters after the dataset files are supplied.
+- [ ] Build dataset-specific adapters that preserve complete conversations, labels,
+  metadata, and case IDs for CNFinBench and FinVault.
+- [ ] Define leakage-safe development, calibration, and final evaluation splits.
+- [ ] Add evaluation metrics and result manifests for security detection, benign
+  false positives, detector failures, latency, and resource usage.
+- [ ] Run CPU and API/GPU preflight checks, then a small stratified pilot. Review
+  outputs before approving a full benchmark run.
+- [ ] Run the approved full evaluations and produce a reproducible aggregate report.
