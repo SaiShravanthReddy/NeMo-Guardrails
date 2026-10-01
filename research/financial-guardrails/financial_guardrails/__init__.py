@@ -17,6 +17,7 @@
 
 from financial_guardrails.integration import FinancialGuard, GuardUnavailable
 from financial_guardrails.judge import PolicyJudgeDetector
+from financial_guardrails.judge_backends import configured_judge_backend
 from financial_guardrails.schema import Decision, Mode, SecurityEvent, Verdict
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "PolicyJudgeDetector",
     "SecurityEvent",
     "Verdict",
+    "configured_judge_backend",
 ]

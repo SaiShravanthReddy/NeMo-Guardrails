@@ -1,0 +1,21 @@
+schema_version: "1.0"
+backends:
+  navigator:
+    base_url: https://api.ai.it.ufl.edu/v1
+    model: gpt-oss-120b
+    api_key_env: NAVIGATOR_TOOLKIT_API_KEY
+    request_options:
+      max_tokens: 1024
+      response_format:
+        type: json_object
+  hipergator:
+    base_url: http://127.0.0.1:8000/v1
+    model: Qwen/Qwen3-8B-AWQ
+    # Pass this immutable Hugging Face revision when starting vLLM.
+    revision: 4da05a8edb55c6046cce958586c33b61da07bb79
+    request_options:
+      max_tokens: 1024
+      response_format:
+        type: json_object
+      chat_template_kwargs:
+        enable_thinking: false

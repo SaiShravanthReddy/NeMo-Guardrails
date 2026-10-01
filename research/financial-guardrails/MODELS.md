@@ -30,9 +30,9 @@ safety output. The parser rejects missing or unknown labels. It does not replace
 separate policy-reading judge required for contextual Open Lakera decisions. No
 model may decide user identity, permission, or transaction authorization.
 
-## Recommended policy judge, pending approval
+## Selected local policy judge
 
-`Qwen/Qwen3-8B-AWQ` is the recommended general policy judge for the first local
+`Qwen/Qwen3-8B-AWQ` is the selected general policy judge for the first local
 HiPerGator deployment. Its official model card lists Apache-2.0, 8.2 billion
 parameters, support for more than 100 languages and dialects, and a native 32,768
 token context. The official AWQ repository is about 6.11 GB, leaving substantially
@@ -41,11 +41,12 @@ than the 19.3 GB BF16 `Qwen/Qwen3.5-9B` repository.
 
 Model card: https://huggingface.co/Qwen/Qwen3-8B-AWQ
 
-The model is large enough to follow the versioned policy and strict JSON schema,
+The immutable model revision is
+`4da05a8edb55c6046cce958586c33b61da07bb79`. The model is large enough to follow
+the versioned policy and strict JSON schema,
 but small enough for one `hpg-turin` L4. AWQ quantization can reduce quality, so this
 is a hypothesis until structured-output, policy-following, benign-counterexample,
-latency, and memory tests pass. The revision must be pinned after approval and before
-download.
+latency, and memory tests pass.
 
 `Qwen/Qwen3.5-9B` is not recommended for the first run. Its BF16 repository is close
 to the L4 memory limit once runtime state and long-context KV cache are included, and
@@ -57,7 +58,30 @@ No weights were downloaded and no inference result is claimed in this revision.
 Enable a model only after downloading its pinned revision, running the local smoke
 fixtures, measuring memory/latency, and calibrating it on a development split.
 
-For the first HiPerGator check, pre-stage the locked environment and pinned weights,
-create `logs/`, then submit `slurm/model-smoke.sbatch` from this directory. The job
-requests one `hpg-turin` L4 for 15 minutes. Inspect the model labels, exit status,
-actual GPU model/memory, and maximum resident memory before increasing resources.
+For the first HiPerGator policy-judge check, follow `JUDGE_RUNBOOK.md` and submit
+`slurm/judge-preflight.sbatch`. The existing `slurm/model-smoke.sbatch` checks the
+specialized moderation classifier and is a separate experiment.
+
+## Selected NaviGator policy judge
+
+`gpt-oss-120b` is the selected hosted judge. UF lists it as a locally hosted
+NaviGator model that permits open, sensitive, and restricted data, exposes an
+OpenAI-compatible chat-completions endpoint, supports a 128,000-token context, and
+costs $0.06 per million input tokens and $0.15 per million output tokens as checked
+on 2026-10-01. Its weights are Apache-2.0. The live team allowlist, successful
+structured response, actual token accounting, rate limits, and remaining budget
+still require a real preflight before benchmark data is sent.
+
+Model documentation: https://docs.ai.it.ufl.edu/docs/navigator_models/models/oai-gpt-oss-120b/
+
+This model is preferable to `gpt-oss-20b` for the primary hosted condition because
+the larger model has more capacity for policy following, long financial dialogues,
+and ambiguous authorization decisions. That is a selection rationale, not a result;
+fixture and pilot measurements must confirm it. The 20B model remains a contingency
+only if the selected model fails availability or budget gates, and changing models
+requires a new experiment manifest.
+
+Both selected judges use `financial_guardrails/judge_backends.py` and the declarative
+settings in `models/judge_backends.yml`. The shared path prevents backend-specific
+policy or parser changes. See `JUDGE_RUNBOOK.md` for the matched experiment matrix
+and preflight commands.

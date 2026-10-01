@@ -86,10 +86,13 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   only cases unresolved by deterministic rules.
 - [x] Define two separately reported FinVault tasks: completed-outcome safety and
   runtime malicious-attempt interception.
-- [ ] Confirm whether the required LLM judge will run locally on HiPerGator or
-  through Navigator, and confirm the judge model and policy rubric with the team.
-- [ ] Implement and validate the selected live judge backend without logging raw
-  benchmark content or sending sensitive data to an unapproved service.
+- [x] Select matched live judge backends: NaviGator `gpt-oss-120b` and local
+  HiPerGator `Qwen/Qwen3-8B-AWQ`, using the same policy rubric and both all-event
+  and rules-first cascade modes.
+- [x] Implement and offline-test one OpenAI-compatible backend client for both
+  selected services without logging raw benchmark content or provider bodies.
+- [ ] Run the two-fixture live preflight against NaviGator and record model access,
+  structured-output behavior, latency, and current account budget.
 - [ ] Run selected model weights on `hpg-turin` and record measured memory, latency,
   and fixture quality. Requires HiPerGator access during execution.
 - [ ] Convert preserved FinVault action strings into validated tool names and
