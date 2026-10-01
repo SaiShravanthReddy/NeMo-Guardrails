@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from financial_guardrails.evaluation import (
     ConfidenceInterval,
@@ -59,7 +59,7 @@ class ExperimentManifest(BaseModel):
     judge_mode: Literal["rules_only", "all_events", "rules_first_cascade"]
     positive_label: Literal[0, 1]
     decision_threshold: float | None = Field(default=None, ge=0, le=1)
-    generation_settings: dict[str, Scalar] = Field(default_factory=dict)
+    generation_settings: dict[str, JsonValue] = Field(default_factory=dict)
     software_versions: dict[str, str] = Field(default_factory=dict)
     hardware: dict[str, Scalar] = Field(default_factory=dict)
     pricing_usd_per_million_tokens: dict[str, float] = Field(default_factory=dict)

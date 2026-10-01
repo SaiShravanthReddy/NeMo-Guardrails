@@ -50,6 +50,8 @@ def main() -> None:
     )
     parser.add_argument("--backend", choices=("rules_only", "navigator", "hipergator"), default="rules_only")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
+    parser.add_argument("--resume-checkpoint", type=Path)
+    parser.add_argument("--inference-code-commit")
     parser.add_argument("--bootstrap-iterations", type=int, default=1000)
     args = parser.parse_args()
     if (args.judge_mode == "rules_only") != (args.backend == "rules_only"):
@@ -67,7 +69,9 @@ def main() -> None:
     )
     if not cases:
         raise SystemExit("selected split is empty")
-    code_commit = _git_commit()
+    code_commit = args.inference_code_commit or _git_commit()
+    if args.inference_code_commit and not _valid_commit(args.inference_code_commit):
+        parser.error("--inference-code-commit must be a 40-character lowercase Git SHA")
     dataset_sha256 = inspect_json_dataset(adapter.data_path).sha256
     metadata_sha256 = _sha256(adapter.metadata_path)
     policy_sha256 = _sha256(DEFAULT_POLICY_PATH)
@@ -97,7 +101,7 @@ def main() -> None:
         cases,
         judge_mode=args.judge_mode,
         backend_name=args.backend,
-        checkpoint_path=args.output_dir / f"{run_id}.checkpoint.jsonl",
+        checkpoint_path=args.resume_checkpoint or args.output_dir / f"{run_id}.checkpoint.jsonl",
         progress_sink=_MilestoneReporter(),
     )
     records = tuple(
@@ -159,6 +163,10 @@ def _sha256(path: Path) -> str:
 
 def _git_commit() -> str:
     return subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def _valid_commit(value: str) -> bool:
+    return len(value) == 40 and all(character in "0123456789abcdef" for character in value)
 
 
 class _MilestoneReporter:
