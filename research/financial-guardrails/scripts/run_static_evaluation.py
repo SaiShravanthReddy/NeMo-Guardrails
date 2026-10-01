@@ -32,6 +32,7 @@ from pathlib import Path
 from financial_guardrails.configuration import DEFAULT_POLICY_PATH, load_policy
 from financial_guardrails.datasets import cnfinbench_adapter, finvault_adapter, inspect_json_dataset
 from financial_guardrails.evaluation import bootstrap_confidence_intervals, score_slices, summarize_records
+from financial_guardrails.finvault_policy import DEFAULT_FINVAULT_POLICY_PATH
 from financial_guardrails.judge import DEFAULT_JUDGE_POLICY_PATH
 from financial_guardrails.judge_backends import load_judge_backend_registry
 from financial_guardrails.results import EvaluationArtifact, ExperimentManifest, write_evaluation_artifact
@@ -71,6 +72,9 @@ def main() -> None:
     metadata_sha256 = _sha256(adapter.metadata_path)
     policy_sha256 = _sha256(DEFAULT_POLICY_PATH)
     judge_policy_sha256 = _sha256(DEFAULT_JUDGE_POLICY_PATH)
+    benchmark_policy_sha256 = (
+        _sha256(DEFAULT_FINVAULT_POLICY_PATH) if args.dataset == "finvault-v5-fixed-full" else None
+    )
     fingerprint = hashlib.sha256(
         json.dumps(
             {
@@ -79,6 +83,7 @@ def main() -> None:
                 "metadata_sha256": metadata_sha256,
                 "policy_sha256": policy_sha256,
                 "judge_policy_sha256": judge_policy_sha256,
+                "benchmark_policy_sha256": benchmark_policy_sha256,
                 "backend": args.backend,
                 "judge_mode": args.judge_mode,
                 "split": args.split,
@@ -116,6 +121,7 @@ def main() -> None:
         policy_version=policy.policy_version,
         policy_sha256=policy_sha256,
         judge_policy_sha256=judge_policy_sha256,
+        benchmark_policy_sha256=benchmark_policy_sha256,
         backend=args.backend,
         model_id=backend_spec.model if backend_spec else "deterministic-rules",
         model_revision=backend_spec.revision if backend_spec else None,

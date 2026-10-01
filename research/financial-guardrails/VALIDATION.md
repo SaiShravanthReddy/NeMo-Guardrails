@@ -115,3 +115,16 @@ Date: 2026-10-01
   exposes a policy-integration blocker and is not an efficacy result.
 - The local readiness check verified dataset checksums, metadata, adapters, action
   parsing, the pinned Qwen revision, and both SLURM scripts.
+
+## FinVault tool-policy review
+
+Date: 2026-10-01
+
+- Reconciled the supplied 203-tool draft against the exact evaluation export: 197
+  unique tools and 4,838 recorded calls.
+- Removed six tools absent from the evaluation file and recomputed all counts and
+  argument inventories.
+- Added conditional blocking for explicit bypass, override, skip, concealment,
+  under-reporting, and dual-contract boolean arguments across 27 tools.
+- The full rules-only replay completed all 1,043 cases without detector failures.
+  Its scores are diagnostic baseline measurements, not commercial Lakera results.

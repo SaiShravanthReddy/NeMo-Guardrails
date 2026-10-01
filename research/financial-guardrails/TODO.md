@@ -111,6 +111,9 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   run as efficacy or start its LLM evaluation until the tool policy is reviewed.
 - [x] Add an unattended NaviGator pilot job with live preflight gates, restart
   checkpoints, 10% log milestones, and SLURM start/end/failure notifications.
+- [x] Freeze an evaluation-specific policy for all 197 FinVault tools, recompute
+  counts and argument schemas from the supplied dataset, block explicit bypass
+  arguments, and include the policy checksum in run manifests and checkpoints.
 - [ ] Run NaviGator and HiPerGator preflight checks, then the LLM pilot. Review
   outputs before approving a full benchmark run.
 - [ ] Run the approved full evaluations and produce a reproducible aggregate report.

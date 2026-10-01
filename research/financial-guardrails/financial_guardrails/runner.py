@@ -28,6 +28,7 @@ from pathlib import Path
 from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.engine import PRECEDENCE, PolicyEngine
 from financial_guardrails.evaluation import EvaluationRecord
+from financial_guardrails.finvault_policy import FinVaultToolPolicyDetector
 from financial_guardrails.judge import PolicyJudgeDetector
 from financial_guardrails.judge_backends import BackendCallMetrics, configured_judge_backend
 from financial_guardrails.replay import event_from_message
@@ -46,11 +47,22 @@ def evaluate_cases(
         raise ValueError("unsupported judge mode")
     selected_cases = tuple(cases)
     metrics: list[BackendCallMetrics] = []
-    rules_engine = PolicyEngine()
+    dataset_keys = {case.dataset_key for case in selected_cases}
+    if len(dataset_keys) != 1:
+        raise ValueError("one evaluation run cannot mix datasets")
+    finvault_detector = FinVaultToolPolicyDetector() if dataset_keys == {"finvault-v5-fixed-full"} else None
+    additional_rules = (finvault_detector,) if finvault_detector else ()
+    rules_engine = PolicyEngine(
+        additional_detectors=additional_rules,
+        include_tool_policy=finvault_detector is None,
+    )
     full_engine = rules_engine
     if judge_mode != "rules_only":
         backend = configured_judge_backend(backend_name, metrics_sink=metrics.append)
-        full_engine = PolicyEngine(additional_detectors=(PolicyJudgeDetector(backend),))
+        full_engine = PolicyEngine(
+            additional_detectors=(*additional_rules, PolicyJudgeDetector(backend)),
+            include_tool_policy=finvault_detector is None,
+        )
 
     checkpoint = Path(checkpoint_path) if checkpoint_path else None
     existing = _read_checkpoint(checkpoint) if checkpoint and checkpoint.exists() else {}

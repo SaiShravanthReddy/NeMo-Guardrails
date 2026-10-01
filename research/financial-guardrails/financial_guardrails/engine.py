@@ -54,16 +54,18 @@ class PolicyEngine:
         config: PolicyConfig | None = None,
         detectors: Iterable[Detector] | None = None,
         additional_detectors: Iterable[Detector] = (),
+        include_tool_policy: bool = True,
     ):
         self.config = config or load_policy()
-        default_detectors = (
+        default_detectors = [
             PromptDefenseDetector(),
             LimitDetector(self.config),
             ContentSafetyDetector(),
             DataLeakageDetector(self.config),
             LinkDetector(self.config),
-            ToolPolicyDetector(self.config),
-        )
+        ]
+        if include_tool_policy:
+            default_detectors.append(ToolPolicyDetector(self.config))
         self.detectors = [*(detectors if detectors is not None else default_detectors), *additional_detectors]
 
     def evaluate(self, event: SecurityEvent, mode: Mode | None = None) -> Verdict:
