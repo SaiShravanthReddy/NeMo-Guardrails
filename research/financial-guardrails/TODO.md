@@ -94,9 +94,9 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 - [x] Add continuous judge risk scores, comprehensive metric calculations,
   content-free per-case telemetry, confidence intervals, paired comparisons, and
   atomic result artifacts so reporting choices do not require repeated inference.
-- [ ] Run the two-fixture live preflight against NaviGator and record model access,
+- [x] Run the two-fixture live preflight against NaviGator and record model access,
   structured-output behavior, latency, and current account budget.
-- [ ] Run selected model weights on `hpg-turin` and record measured memory, latency,
+- [x] Run selected model weights on `hpg-turin` and record measured memory, latency,
   and fixture quality. Requires HiPerGator access during execution.
 - [x] Add a non-executing FinVault action parser and validate all 4,838 recorded
   calls. Using it for the final study still depends on the static-replay versus
@@ -114,6 +114,50 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 - [x] Freeze an evaluation-specific policy for all 197 FinVault tools, recompute
   counts and argument schemas from the supplied dataset, block explicit bypass
   arguments, and include the policy checksum in run manifests and checkpoints.
-- [ ] Run NaviGator and HiPerGator preflight checks, then the LLM pilot. Review
-  outputs before approving a full benchmark run.
+- [x] Run NaviGator and HiPerGator preflight checks, then the LLM pilot. Review
+  outputs before approving a full benchmark run. Repaired NaviGator CNFinBench
+  pilots have zero detector errors; FinVault and local-Qwen pilots still require
+  judge-output reliability work.
 - [ ] Run the approved full evaluations and produce a reproducible aggregate report.
+
+## 3. Current pending work (updated 2026-10-03)
+
+### LLM reliability and backend selection
+
+- [ ] Diagnose the remaining malformed LLM verdict categories without storing raw
+  benchmark content or secrets.
+  Blocker: FinVault pilots still have detector errors (NaviGator: 16--17 of 64;
+  local Qwen: 17 of 64).
+  Verify: a repeated FinVault pilot has zero detector errors.
+- [ ] Record judge repair attempts in content-free per-case telemetry.
+  Verify: aggregate retry count agrees with backend-call telemetry.
+- [ ] Compare valid CNFinBench pilots: NaviGator cascade versus all-events, and
+  select a backend/mode only after a zero-error FinVault pilot.
+  Verify: compare coverage, balanced accuracy, F1, latency, and cost on the same
+  frozen pilot split.
+
+### Evaluation protocol requested in the 2026-10-01 lab meeting
+
+- [ ] Confirm with Ani the labels, denominators, and primary metrics for separate
+  attack-attempt and attack-success evaluations.
+  Verify: write the agreed protocol before tuning or final evaluation.
+- [ ] Add separate attack-attempt and attack-success reporting. FinVault's retained
+  `attack_success` annotation is available; CNFinBench needs a confirmed equivalent
+  label or an explicit statement that it is unavailable.
+  Verify: result artifacts and report tables keep the two tasks separate.
+- [ ] Define how `require_confirmation` is counted for each task.
+  Verify: the decision mapping is documented and covered by tests.
+- [ ] Report realistic per-conversation latency (median and p95) for every valid
+  configuration on CNFinBench and FinVault.
+  Verify: timing excludes model startup, batching, and training time.
+
+### Final experiments and reporting
+
+- [ ] Tune policies only on development/calibration data; reserve final splits for
+  final reporting.
+  Dependency: agreed outcome protocol and a zero-error judge configuration.
+- [ ] Run full LLM evaluations for the selected configuration(s), then produce
+  aggregate results with confidence intervals, cost, latency, and limitations.
+  Dependency: successful pilot validation and professor/Ani protocol confirmation.
+- [ ] Update `TEAM_UPDATE.md`, `METRICS.md`, and the final report using only
+  validated results; label all scores as Open Lakera/NeMo results.
