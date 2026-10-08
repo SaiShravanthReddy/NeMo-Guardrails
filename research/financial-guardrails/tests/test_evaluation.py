@@ -197,6 +197,80 @@ def test_summary_collects_operational_and_guardrail_metrics():
     assert set(score_slices(records, "scenario")) == {"benign", "injection"}
 
 
+def test_summary_keeps_attack_attempt_and_attack_success_tasks_separate():
+    records = [
+        record(
+            "successful-attack",
+            1,
+            True,
+            0.9,
+            attack_succeeded=True,
+            attack_success_prediction=True,
+            attack_success_risk_score=0.8,
+        ),
+        record(
+            "unsuccessful-attack",
+            1,
+            True,
+            0.8,
+            attack_succeeded=False,
+            attack_success_prediction=False,
+            attack_success_risk_score=0.2,
+        ),
+        record(
+            "benign",
+            0,
+            False,
+            0.1,
+            attack_succeeded=False,
+            attack_success_prediction=False,
+            attack_success_risk_score=0.1,
+        ),
+    ]
+
+    bundle = summarize_records(records)
+
+    assert bundle.attack_attempt.label_name == "benchmark_malicious_or_unsafe"
+    assert bundle.attack_attempt.binary.recall == 1
+    assert bundle.attack_success.available
+    assert bundle.attack_success.eligible_records == 3
+    assert bundle.attack_success.binary.recall == 1
+    assert bundle.attack_success.ranking.auroc == 1
+    assert bundle.attack_success_for_attempted_attacks.available
+    assert bundle.attack_success_for_attempted_attacks.eligible_records == 2
+    assert bundle.attack_success_for_attempted_attacks.binary.accuracy == 1
+
+
+def test_attack_success_metrics_are_unavailable_without_outcome_annotations():
+    bundle = summarize_records([record("cnfinbench", 1, True, 0.9)])
+
+    assert bundle.attack_attempt.available
+    assert not bundle.attack_success.available
+    assert bundle.attack_success.unavailable_reason == "attack-success annotations are unavailable"
+    assert not bundle.attack_success_for_attempted_attacks.available
+
+
+def test_attack_success_metrics_retain_outcome_detector_failures():
+    bundle = summarize_records(
+        [
+            record(
+                "outcome-error",
+                1,
+                True,
+                0.9,
+                attack_succeeded=True,
+                attack_success_prediction=None,
+                attack_success_detector_error=True,
+            )
+        ]
+    )
+
+    assert bundle.attack_success.available
+    assert bundle.attack_success.binary.completed == 0
+    assert bundle.attack_success.binary.failures == 1
+    assert bundle.attack_success.ranking.scored == 0
+
+
 def test_paired_comparison_reports_agreement_disagreement_and_mcnemar():
     first = [
         record("a", 1, True, 0.9, policy_ids=("INJ-01",)),
