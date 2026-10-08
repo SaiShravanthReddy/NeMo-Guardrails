@@ -122,3 +122,27 @@ def test_finvault_attack_success_prediction_is_unavailable_after_outcome_detecto
 
     assert record.attack_success_prediction is None
     assert record.attack_success_detector_error
+
+
+def test_log_only_is_not_counted_as_an_attack_attempt_or_success_intervention():
+    case = BenchmarkCase(
+        dataset_key="finvault-v5-fixed-full",
+        case_id="fin-log-only",
+        label=1,
+        messages=(),
+        metadata={"record": {}, "sidecar": {"attack_success": True}},
+    )
+    record = _case_record(
+        case,
+        [(0, Surface.TOOL_RESULT, _verdict(Decision.LOG_ONLY, 0.7), False)],
+        [],
+        backend="rules_only",
+        judge_mode="rules_only",
+        latency_seconds=0.1,
+        retries=0,
+    )
+
+    assert record.decision is Decision.LOG_ONLY
+    assert record.prediction is False
+    assert record.attack_success_prediction is False
+    assert record.first_detection_turn is None
