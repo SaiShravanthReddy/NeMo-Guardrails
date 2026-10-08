@@ -115,6 +115,7 @@ def test_judge_repairs_one_invalid_response_without_relaxing_policy_validation()
     assert result.decision is Decision.ALLOW
     assert len(backend.prompts) == 2
     assert detector.repair_attempts == 1
+    assert detector.completion_attempts == 2
     assert "REPAIR_REQUIRED" in backend.prompts[1]
     assert "judge_output_schema_invalid" in backend.prompts[1]
 

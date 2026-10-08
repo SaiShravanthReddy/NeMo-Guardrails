@@ -89,6 +89,7 @@ def evaluate_cases(
             continue
         started = time.monotonic()
         metric_start = len(metrics)
+        completion_start = judge_detector.completion_attempts if judge_detector else 0
         repair_start = judge_detector.repair_attempts if judge_detector else 0
         verdicts: list[tuple[int, Surface, Verdict, bool]] = []
         for message in case.messages:
@@ -107,6 +108,7 @@ def evaluate_cases(
             backend=backend_name,
             judge_mode=judge_mode,
             latency_seconds=time.monotonic() - started,
+            judge_attempts=(judge_detector.completion_attempts - completion_start) if judge_detector else 0,
             retries=(judge_detector.repair_attempts - repair_start) if judge_detector else 0,
         )
         records.append(record)
@@ -127,6 +129,7 @@ def _case_record(
     judge_mode: str,
     latency_seconds: float,
     retries: int,
+    judge_attempts: int = 0,
 ) -> EvaluationRecord:
     detector_error = any(verdict.detector_error for _turn, _surface, verdict, _rules in verdicts)
     findings = [item for item in verdicts if item[2].recommended_decision is not Decision.ALLOW]
@@ -182,6 +185,8 @@ def _case_record(
         first_detection_turn=first_detection,
         dangerous_action_turn=dangerous_turn,
         judge_invoked=bool(calls),
+        judge_attempts=judge_attempts,
+        judge_backend_calls=len(calls),
         rules_intervened=any(rules for _t, _s, _v, rules in verdicts),
         latency_seconds=latency_seconds,
         input_tokens=_sum_int(call.input_tokens for call in calls),

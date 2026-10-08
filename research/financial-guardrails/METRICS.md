@@ -72,6 +72,8 @@ on held-out data.
 - Decision, risk-category, policy, and surface counts.
 - Judge invocation and deterministic-rule intervention rates.
 - Detector errors, backend failures, and retries.
+- Judge-invoked conversations, logical judge attempts, repair attempts, observed
+  backend calls, and a check that logical attempts match observed call telemetry.
 - p50, p90, p95, and p99 latency; p50 and p95 time to first token when available.
 - Input/output tokens, NaviGator estimated cost, and cost per true positive.
 - Peak GPU memory, total GPU seconds, and cases per minute.
