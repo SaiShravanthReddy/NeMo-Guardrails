@@ -147,6 +147,15 @@ def _detector_error_code(exc: Exception) -> str:
     if isinstance(exc, TypeError):
         return "invalid_detector_result"
     message = str(exc).lower()
+    for code in (
+        "judge_output_json_invalid",
+        "judge_output_not_object",
+        "judge_output_schema_invalid",
+        "judge_output_unknown_policy_id",
+        "judge_output_policy_category_mismatch",
+    ):
+        if code in message:
+            return code
     if "malformed output" in message:
         return "malformed_judge_output"
     if "unknown policy id" in message or "risk category inconsistent" in message:
