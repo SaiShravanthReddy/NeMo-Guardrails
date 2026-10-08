@@ -57,10 +57,12 @@ def evaluate_cases(
         include_tool_policy=finvault_detector is None,
     )
     full_engine = rules_engine
+    judge_detector: PolicyJudgeDetector | None = None
     if judge_mode != "rules_only":
         backend = configured_judge_backend(backend_name, metrics_sink=metrics.append)
+        judge_detector = PolicyJudgeDetector(backend)
         full_engine = PolicyEngine(
-            additional_detectors=(*additional_rules, PolicyJudgeDetector(backend)),
+            additional_detectors=(*additional_rules, judge_detector),
             include_tool_policy=finvault_detector is None,
         )
 
@@ -84,6 +86,7 @@ def evaluate_cases(
             continue
         started = time.monotonic()
         metric_start = len(metrics)
+        repair_start = judge_detector.repair_attempts if judge_detector else 0
         verdicts: list[tuple[int, Surface, Verdict, bool]] = []
         for message in case.messages:
             event = event_from_message(case, message)
@@ -101,6 +104,7 @@ def evaluate_cases(
             backend=backend_name,
             judge_mode=judge_mode,
             latency_seconds=time.monotonic() - started,
+            retries=(judge_detector.repair_attempts - repair_start) if judge_detector else 0,
         )
         records.append(record)
         if checkpoint:
@@ -119,6 +123,7 @@ def _case_record(
     backend: str,
     judge_mode: str,
     latency_seconds: float,
+    retries: int,
 ) -> EvaluationRecord:
     detector_error = any(verdict.detector_error for _turn, _surface, verdict, _rules in verdicts)
     findings = [item for item in verdicts if item[2].recommended_decision is not Decision.ALLOW]
@@ -169,6 +174,7 @@ def _case_record(
         input_tokens=_sum_int(call.input_tokens for call in calls),
         output_tokens=_sum_int(call.output_tokens for call in calls),
         estimated_cost_usd=_sum_float(call.estimated_cost_usd for call in calls),
+        retries=retries,
         backend=backend,
         judge_mode=judge_mode,
         slices=slices,

@@ -18,17 +18,38 @@
 from __future__ import annotations
 
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from pathlib import Path
 from typing import Protocol
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from financial_guardrails.schema import Decision, DetectorResult, Evidence, RiskCategory, SecurityEvent
 
 DEFAULT_JUDGE_POLICY_PATH = Path(__file__).resolve().parents[1] / "policies" / "llm_judge_v1.yml"
+MAX_REPAIR_ATTEMPTS = 2
+_RESPONSE_FIELDS = frozenset(
+    {
+        "decision",
+        "policy_ids",
+        "risk_category",
+        "evidence_summary",
+        "explanation",
+        "sanitized_content",
+        "risk_score",
+    }
+)
+
+
+class JudgeOutputError(ValueError):
+    """A content-free reason that a provider response cannot be used."""
+
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
 
 
 class JudgePolicyEntry(BaseModel):
@@ -153,6 +174,7 @@ class PolicyJudgeDetector:
         self._policy_ids = {entry.id for entry in self.policy.policies}
         self._policy_categories = {entry.id: entry.category for entry in self.policy.policies}
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="policy-judge")
+        self.repair_attempts = 0
 
     def detect(self, event: SecurityEvent) -> DetectorResult:
         prompt = build_judge_prompt(event, self.policy)
@@ -163,7 +185,8 @@ class PolicyJudgeDetector:
         raw = self._complete(prompt)
         try:
             return self._validate_response(raw)
-        except Exception:
+        except JudgeOutputError as initial_error:
+            last_error = initial_error
             repair_prompt = "\n".join(
                 (
                     prompt,
@@ -174,10 +197,13 @@ class PolicyJudgeDetector:
                     "For every other decision, use one or more IDs exactly as listed in TRUSTED_POLICY_JSON.",
                 )
             )
-            try:
-                return self._validate_response(self._complete(repair_prompt))
-            except Exception as repair_exc:
-                raise ValueError("policy judge returned malformed output") from repair_exc
+            for _attempt in range(MAX_REPAIR_ATTEMPTS):
+                self.repair_attempts += 1
+                try:
+                    return self._validate_response(self._complete(repair_prompt))
+                except JudgeOutputError as repair_error:
+                    last_error = repair_error
+            raise JudgeOutputError(last_error.code) from last_error
 
     def _complete(self, prompt: str) -> str:
         future = self._executor.submit(self.backend.complete, prompt)
@@ -191,14 +217,14 @@ class PolicyJudgeDetector:
         return raw
 
     def _validate_response(self, raw: str) -> JudgeResponse:
-        response = JudgeResponse.model_validate_json(raw)
+        response = _parse_judge_response(raw)
         unknown = set(response.policy_ids) - self._policy_ids
         if unknown:
-            raise ValueError("policy judge returned an unknown policy ID")
+            raise JudgeOutputError("judge_output_unknown_policy_id")
         if response.policy_ids and response.risk_category not in {
             self._policy_categories[policy_id] for policy_id in response.policy_ids
         }:
-            raise ValueError("policy judge returned a risk category inconsistent with its policy IDs")
+            raise JudgeOutputError("judge_output_policy_category_mismatch")
         return response
 
     def _detector_result(self, response: JudgeResponse) -> DetectorResult:
@@ -220,3 +246,30 @@ class PolicyJudgeDetector:
             sanitized_content=response.sanitized_content,
             risk_score=response.risk_score,
         )
+
+
+def _parse_judge_response(raw: str) -> JudgeResponse:
+    """Parse harmless provider formatting variation without relaxing policy checks."""
+    payload = _load_response_payload(raw)
+    if not isinstance(payload, dict):
+        raise JudgeOutputError("judge_output_not_object")
+    normalized = {key: value for key, value in payload.items() if key in _RESPONSE_FIELDS}
+    if isinstance(normalized.get("policy_ids"), str):
+        normalized["policy_ids"] = [normalized["policy_ids"]]
+    if normalized.get("sanitized_content") == "":
+        normalized["sanitized_content"] = None
+    try:
+        return JudgeResponse.model_validate(normalized)
+    except ValidationError as exc:
+        raise JudgeOutputError("judge_output_schema_invalid") from exc
+
+
+def _load_response_payload(raw: str) -> object:
+    text = raw.strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+    if fenced:
+        text = fenced.group(1)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise JudgeOutputError("judge_output_json_invalid") from exc
