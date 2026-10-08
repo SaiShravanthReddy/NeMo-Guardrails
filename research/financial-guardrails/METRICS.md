@@ -51,6 +51,12 @@ The implemented AUPRC is the step-wise average-precision integral. Rules-only ru
 without continuous scores retain classification metrics but do not fabricate ranking
 scores.
 
+Each attack-attempt and attack-success task bundle reports `risk_score_coverage`.
+AUROC, AUPRC, and threshold-derived ranking metrics are withheld unless coverage is
+complete for every eligible, completed record in that task. This prevents a failed
+or malformed judge response from silently changing the population used for a
+ranking result.
+
 ### Calibration
 
 - Brier score and log loss.
