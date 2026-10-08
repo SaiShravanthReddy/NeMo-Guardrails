@@ -176,7 +176,7 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
             "OUTPUT_VALIDATION_RULES:",
             "If decision is allow, output policy_ids as [], risk_category as none, sanitized_content as null, and risk_score below 0.5.",
             "Do not cite a policy or category when decision is allow. Any other allow combination is invalid.",
-            "For a non-allow decision, use only policy IDs listed in TRUSTED_POLICY_JSON; never invent policy IDs. The first policy ID is primary and its category must be risk_category. Additional policy IDs may describe secondary findings.",
+            "For a non-allow decision, use only policy IDs listed in TRUSTED_POLICY_JSON; never invent policy IDs. risk_category must match at least one listed policy ID. List the most relevant policy first.",
             "Return only the response JSON object.",
         )
     )
@@ -235,7 +235,9 @@ class PolicyJudgeDetector:
         unknown = set(response.policy_ids) - self._policy_ids
         if unknown:
             raise JudgeOutputError("judge_output_unknown_policy_id")
-        if response.policy_ids and response.risk_category is not self._policy_categories[response.policy_ids[0]]:
+        if response.policy_ids and response.risk_category not in {
+            self._policy_categories[policy_id] for policy_id in response.policy_ids
+        }:
             raise JudgeOutputError("judge_output_policy_category_mismatch")
         return response
 
