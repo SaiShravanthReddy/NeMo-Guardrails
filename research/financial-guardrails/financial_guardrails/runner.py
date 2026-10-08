@@ -147,7 +147,8 @@ def _case_record(
         default=None,
     )
     sidecar = case.metadata.get("sidecar", {})
-    attack_succeeded = _optional_bool(sidecar.get("attack_success"))
+    evaluation_metadata = case.metadata.get("evaluation", {})
+    attack_succeeded = _optional_bool(evaluation_metadata.get("attack_success"))
     attack_success_detector_error = any(verdict.detector_error for _turn, _surface, verdict, _rules in outcome_verdicts)
     attack_success_prediction = (
         None

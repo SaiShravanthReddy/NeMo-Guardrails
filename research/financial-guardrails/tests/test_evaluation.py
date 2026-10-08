@@ -218,7 +218,7 @@ def test_evaluation_report_keeps_attack_tasks_separate_and_marks_unavailable_dat
     report = render_evaluation_report([("fixture", metrics)])
 
     assert "## Attack-attempt detection" in report
-    assert "## FinVault attack-success detection" in report
+    assert "## Attack-success detection" in report
     assert "| fixture | 1 | 1 | 100.0%" in report
     assert "| fixture | 0 | unavailable" in report
     assert "## Operational reliability" in report
@@ -267,6 +267,36 @@ def test_summary_keeps_attack_attempt_and_attack_success_tasks_separate():
     assert bundle.attack_success_for_attempted_attacks.available
     assert bundle.attack_success_for_attempted_attacks.eligible_records == 2
     assert bundle.attack_success_for_attempted_attacks.binary.accuracy == 1
+
+
+def test_cnfinbench_attack_success_metrics_name_the_confirmed_hics_label():
+    bundle = summarize_records(
+        [
+            record(
+                "hics-success",
+                1,
+                True,
+                0.9,
+                dataset_key="cnfinbench-pooled",
+                attack_succeeded=True,
+                attack_success_prediction=True,
+                attack_success_risk_score=0.9,
+            ),
+            record(
+                "hics-failure",
+                1,
+                False,
+                0.1,
+                dataset_key="cnfinbench-pooled",
+                attack_succeeded=False,
+                attack_success_prediction=False,
+                attack_success_risk_score=0.1,
+            ),
+        ]
+    )
+
+    assert bundle.attack_success.label_name == "cnfinbench_harmful_hics_below_50"
+    assert bundle.attack_success.binary.accuracy == 1
 
 
 def test_attack_success_metrics_are_unavailable_without_outcome_annotations():

@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections import defaultdict
 from collections.abc import Iterable
 from typing import Literal
 
@@ -29,6 +30,12 @@ from pydantic import BaseModel, ConfigDict
 from financial_guardrails.datasets import BenchmarkCase
 
 SplitName = Literal["development", "calibration", "pilot", "final"]
+_SPLIT_TARGETS: tuple[tuple[SplitName, float], ...] = (
+    ("development", 0.4),
+    ("calibration", 0.2),
+    ("pilot", 0.2),
+    ("final", 0.2),
+)
 
 
 class SplitAssignment(BaseModel):
@@ -49,21 +56,39 @@ def benchmark_group_id(case: BenchmarkCase) -> str:
 
 
 def assign_splits(cases: Iterable[BenchmarkCase], *, seed: str = "open-lakera-v1") -> tuple[SplitAssignment, ...]:
-    """Assign whole source groups to 20/10/10/60 percent partitions."""
-    assignments = []
-    for case in cases:
-        group_id = benchmark_group_id(case)
-        bucket = int.from_bytes(hashlib.sha256(f"{seed}\0{group_id}".encode()).digest()[:8], "big") % 100
-        split: SplitName
-        if bucket < 20:
-            split = "development"
-        elif bucket < 30:
-            split = "calibration"
-        elif bucket < 40:
-            split = "pilot"
-        else:
-            split = "final"
-        assignments.append(SplitAssignment(case_id=case.case_id, group_id=group_id, split=split))
-    if len({item.case_id for item in assignments}) != len(assignments):
+    """Assign whole source groups to 40/20/20/20 percent partitions."""
+    selected_cases = tuple(cases)
+    if len({case.case_id for case in selected_cases}) != len(selected_cases):
         raise ValueError("split input contains duplicate case IDs")
-    return tuple(assignments)
+    groups: dict[str, list[BenchmarkCase]] = defaultdict(list)
+    for case in selected_cases:
+        groups[benchmark_group_id(case)].append(case)
+    targets = _target_counts(len(selected_cases))
+    assigned_counts = {split: 0 for split, _fraction in _SPLIT_TARGETS}
+    group_splits: dict[str, SplitName] = {}
+    for group_id, group_cases in sorted(groups.items(), key=lambda item: _group_sort_key(seed, item[0])):
+        split = max(
+            assigned_counts,
+            key=lambda candidate: (targets[candidate] - assigned_counts[candidate], -_split_order(candidate)),
+        )
+        group_splits[group_id] = split
+        assigned_counts[split] += len(group_cases)
+    return tuple(
+        SplitAssignment(case_id=case.case_id, group_id=group_id, split=group_splits[group_id])
+        for case in selected_cases
+        for group_id in (benchmark_group_id(case),)
+    )
+
+
+def _target_counts(total: int) -> dict[SplitName, int]:
+    targets = {split: int(total * fraction) for split, fraction in _SPLIT_TARGETS}
+    targets["final"] += total - sum(targets.values())
+    return targets
+
+
+def _group_sort_key(seed: str, group_id: str) -> tuple[bytes, str]:
+    return hashlib.sha256(f"{seed}\0{group_id}".encode()).digest(), group_id
+
+
+def _split_order(split: SplitName) -> int:
+    return next(index for index, (name, _fraction) in enumerate(_SPLIT_TARGETS) if name == split)

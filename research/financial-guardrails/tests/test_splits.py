@@ -35,3 +35,15 @@ def test_splits_are_deterministic_and_group_disjoint():
     first = assign_splits(cases)
     assert first == assign_splits(reversed(cases))[::-1]
     assert first[0].split == first[1].split
+
+
+def test_splits_target_the_confirmed_40_20_20_20_allocation():
+    cases = [_case(str(index), str(index)) for index in range(10)]
+
+    assignments = assign_splits(cases)
+
+    counts = {
+        split: sum(item.split == split for item in assignments)
+        for split in ("development", "calibration", "pilot", "final")
+    }
+    assert counts == {"development": 4, "calibration": 2, "pilot": 2, "final": 2}
