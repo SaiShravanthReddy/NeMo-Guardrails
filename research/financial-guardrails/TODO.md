@@ -124,17 +124,18 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 
 ### LLM reliability and backend selection
 
-- [ ] Diagnose the remaining malformed LLM verdict categories without storing raw
-  benchmark content or secrets.
-  Blocker: FinVault pilots still have detector errors (NaviGator: 16--17 of 64;
-  local Qwen: 17 of 64).
-  Verify: a repeated FinVault pilot has zero detector errors.
+- [ ] Validate both LLM backends on a bounded FinVault reliability gate without
+  storing raw benchmark content or secrets.
+  Progress: local Qwen completed 12/12 cases with zero detector errors and full
+  risk-score coverage on 2026-10-08; the matching NaviGator gate is running.
+  Verify: each backend completes 12/12 cases with zero detector errors before a
+  full pilot is scheduled.
 - [x] Record judge repair attempts, logical judge attempts, and observed backend
   calls in content-free per-case telemetry.
   Verify: offline test coverage confirms aggregate call accounting; repeat the
   check on each live pilot artifact.
-- [ ] Compare valid CNFinBench pilots: NaviGator cascade versus all-events, and
-  select a backend/mode only after a zero-error FinVault pilot.
+- [ ] Compare valid CNFinBench and FinVault pilots across NaviGator and local
+  Qwen, then select a backend/mode only after zero-error FinVault gates.
   Verify: compare coverage, balanced accuracy, F1, latency, and cost on the same
   frozen pilot split.
 
@@ -142,11 +143,13 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 
 - [x] Select labels, denominators, and primary metrics for separate attack-attempt
   and attack-success evaluations; see `EVALUATION_PROTOCOL.md`.
-  Follow-up: share the protocol with Ani and record any agreed change before
-  tuning or final evaluation.
+  Ani confirmed on 2026-10-08: CNFinBench attack attempts use the
+  harmful/harmless ID prefix; CNFinBench attack success is harmful HICS <50;
+  FinVault uses its retained outcome; and splits target 40/20/20/20 for
+  development/calibration/pilot/final.
 - [x] Add separate attack-attempt and attack-success reporting. FinVault's retained
-  `attack_success` annotation is available; CNFinBench is explicitly reported as
-  unavailable for this task unless an equivalent label is verified.
+  `attack_success` annotation and CNFinBench's harmful HICS outcome are both
+  available for distinct, source-defined tasks.
   Verify: artifacts and report tables keep the tasks separate.
 - [x] Define how `require_confirmation` is counted for each task.
   Verify: only `block`, `sanitize`, and `require_confirmation` count as
@@ -160,9 +163,9 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 
 - [ ] Tune policies only on development/calibration data; reserve final splits for
   final reporting.
-  Dependency: agreed outcome protocol and a zero-error judge configuration.
+  Dependency: a zero-error judge configuration.
 - [ ] Run full LLM evaluations for the selected configuration(s), then produce
   aggregate results with confidence intervals, cost, latency, and limitations.
-  Dependency: successful pilot validation and professor/Ani protocol confirmation.
+  Dependency: successful pilot validation.
 - [ ] Update `TEAM_UPDATE.md`, `METRICS.md`, and the final report using only
   validated results; label all scores as Open Lakera/NeMo results.
