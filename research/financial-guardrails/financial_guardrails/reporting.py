@@ -19,7 +19,26 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from financial_guardrails.evaluation import MetricBundle
+from financial_guardrails.evaluation import EvaluationTaskMetrics, MetricBundle
+
+
+def render_evaluation_report(runs: Sequence[tuple[str, MetricBundle]]) -> str:
+    """Render the protocol-defined, content-free tables for saved artifacts."""
+
+    return "\n\n".join(
+        (
+            "# Open Lakera evaluation summary",
+            _render_task_table("Attack-attempt detection", runs, "attack_attempt"),
+            _render_task_table("FinVault attack-success detection", runs, "attack_success"),
+            _render_task_table(
+                "FinVault attack-success detection among attempted attacks",
+                runs,
+                "attack_success_for_attempted_attacks",
+            ),
+            _render_operational_table(runs),
+            "## Per-conversation latency\n\n" + render_latency_table(runs),
+        )
+    )
 
 
 def render_latency_table(runs: Sequence[tuple[str, MetricBundle]]) -> str:
@@ -39,5 +58,68 @@ def render_latency_table(runs: Sequence[tuple[str, MetricBundle]]) -> str:
     return "\n".join(lines)
 
 
+def _render_task_table(title: str, runs: Sequence[tuple[str, MetricBundle]], task_name: str) -> str:
+    lines = [
+        f"## {title}",
+        "",
+        "| Run | Eligible | Completed | Coverage | Precision | Recall | F1 | Balanced accuracy | FPR | Score coverage | AUROC | AUPRC |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for name, metrics in runs:
+        task = getattr(metrics, task_name)
+        lines.append(_task_row(name, task))
+    return "\n".join(lines)
+
+
+def _task_row(name: str, task: EvaluationTaskMetrics) -> str:
+    if not task.available:
+        return f"| {name} | {task.eligible_records} | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable |"
+    binary = task.binary
+    ranking = task.ranking
+    assert binary is not None
+    assert ranking is not None
+    return (
+        "| "
+        + " | ".join(
+            (
+                name,
+                str(task.eligible_records),
+                str(binary.completed),
+                _format_percent(binary.coverage),
+                _format_percent(binary.precision),
+                _format_percent(binary.recall),
+                _format_percent(binary.f1),
+                _format_percent(binary.balanced_accuracy),
+                _format_percent(binary.false_positive_rate),
+                _format_percent(task.risk_score_coverage.coverage),
+                _format_percent(ranking.auroc),
+                _format_percent(ranking.auprc),
+            )
+        )
+        + " |"
+    )
+
+
+def _render_operational_table(runs: Sequence[tuple[str, MetricBundle]]) -> str:
+    lines = [
+        "## Operational reliability",
+        "",
+        "| Run | Detector errors | Judge repairs | Judge-invoked conversations | Estimated cost (USD) |",
+        "| --- | ---: | ---: | ---: | ---: |",
+    ]
+    for name, metrics in runs:
+        operational = metrics.operational
+        lines.append(
+            "| "
+            f"{name} | {operational.detector_errors} | {operational.retries} | "
+            f"{operational.judge_invocations} | {operational.total_estimated_cost_usd:.6f} |"
+        )
+    return "\n".join(lines)
+
+
 def _format_seconds(value: float | None) -> str:
     return "unavailable" if value is None else f"{value:.3f}"
+
+
+def _format_percent(value: float | None) -> str:
+    return "unavailable" if value is None else f"{value * 100:.1f}%"

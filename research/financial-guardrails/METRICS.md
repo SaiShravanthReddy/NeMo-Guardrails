@@ -96,6 +96,13 @@ more artifacts with:
 uv run --locked python -m scripts.report_latency outputs/<artifact>.json
 ```
 
+Render all protocol-defined result tables from one or more artifacts without
+repeating inference:
+
+```bash
+uv run --locked python -m scripts.report_evaluation outputs/<artifact>.json
+```
+
 ### Slices, uncertainty, and comparisons
 
 - The full metric bundle can be recomputed for any recorded slice, such as risk
