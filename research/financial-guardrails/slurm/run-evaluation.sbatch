@@ -15,6 +15,7 @@ set -euo pipefail
 : "${DATASET:?Set DATASET to cnfinbench-pooled or finvault-v5-fixed-full}"
 : "${JUDGE_MODE:?Set JUDGE_MODE to all_events or rules_first_cascade}"
 SPLIT="${SPLIT:-pilot}"
+MAX_CASES="${MAX_CASES:-}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 VLLM_BIN="${PROJECT_ROOT}/.venv-vllm/bin/vllm"
 NINJA_BIN="${PROJECT_ROOT}/.venv-vllm/bin/ninja"
@@ -61,7 +62,15 @@ for _attempt in $(seq 1 120); do
 done
 curl --fail --silent http://127.0.0.1:8000/health >/dev/null
 
-"${PROJECT_PYTHON}" -m scripts.run_static_evaluation "${DATASET}" \
-  --split "${SPLIT}" \
-  --judge-mode "${JUDGE_MODE}" \
+evaluation_args=(
+  "${DATASET}"
+  --split "${SPLIT}"
+  --judge-mode "${JUDGE_MODE}"
   --backend hipergator
+)
+if [[ -n "${MAX_CASES}" ]]; then
+  [[ "${MAX_CASES}" =~ ^[1-9][0-9]*$ ]] || { echo "MAX_CASES must be a positive integer" >&2; exit 2; }
+  evaluation_args+=(--max-cases "${MAX_CASES}")
+fi
+
+"${PROJECT_PYTHON}" -m scripts.run_static_evaluation "${evaluation_args[@]}"
