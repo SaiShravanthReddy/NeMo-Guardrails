@@ -132,7 +132,7 @@ def test_finvault_attack_success_prediction_uses_only_outcome_surfaces():
         case_id="fin-1",
         label=1,
         messages=(),
-        metadata={"record": {}, "sidecar": {"attack_success": True}},
+        metadata={"record": {}, "sidecar": {}, "evaluation": {"attack_success": True}},
     )
     record = _case_record(
         case,
@@ -161,7 +161,7 @@ def test_finvault_attack_success_prediction_is_unavailable_after_outcome_detecto
         case_id="fin-2",
         label=1,
         messages=(),
-        metadata={"record": {}, "sidecar": {"attack_success": False}},
+        metadata={"record": {}, "sidecar": {}, "evaluation": {"attack_success": False}},
     )
     record = _case_record(
         case,
@@ -183,7 +183,7 @@ def test_log_only_is_not_counted_as_an_attack_attempt_or_success_intervention():
         case_id="fin-log-only",
         label=1,
         messages=(),
-        metadata={"record": {}, "sidecar": {"attack_success": True}},
+        metadata={"record": {}, "sidecar": {}, "evaluation": {"attack_success": True}},
     )
     record = _case_record(
         case,

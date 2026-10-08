@@ -29,9 +29,9 @@ def render_evaluation_report(runs: Sequence[tuple[str, MetricBundle]]) -> str:
         (
             "# Open Lakera evaluation summary",
             _render_task_table("Attack-attempt detection", runs, "attack_attempt"),
-            _render_task_table("FinVault attack-success detection", runs, "attack_success"),
+            _render_task_table("Attack-success detection", runs, "attack_success"),
             _render_task_table(
-                "FinVault attack-success detection among attempted attacks",
+                "Attack-success detection among attempted attacks",
                 runs,
                 "attack_success_for_attempted_attacks",
             ),

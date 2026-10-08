@@ -508,10 +508,11 @@ def summarize_records(
 
 
 def _attack_success_metrics(records: Sequence[EvaluationRecord]) -> EvaluationTaskMetrics:
+    label_name = _attack_success_label_name(records)
     eligible = [record for record in records if record.attack_succeeded is not None]
     if not eligible:
         return _unavailable_task_metrics(
-            label_name="finvault_attack_success",
+            label_name=label_name,
             prediction_name="outcome_surface_guardrail_intervention",
             eligible_records=0,
             reason="attack-success annotations are unavailable",
@@ -524,12 +525,21 @@ def _attack_success_metrics(records: Sequence[EvaluationRecord]) -> EvaluationTa
     ]
     return _task_metrics(
         eligible,
-        label_name="finvault_attack_success",
+        label_name=label_name,
         prediction_name="outcome_surface_guardrail_intervention",
         labels=labels,
         predictions=predictions,
         scores=scores,
     )
+
+
+def _attack_success_label_name(records: Sequence[EvaluationRecord]) -> str:
+    dataset_keys = {record.dataset_key for record in records}
+    if dataset_keys == {"cnfinbench-pooled"}:
+        return "cnfinbench_harmful_hics_below_50"
+    if dataset_keys == {"finvault-v5-fixed-full"}:
+        return "finvault_attack_success"
+    return "dataset_attack_success"
 
 
 def _task_metrics(
