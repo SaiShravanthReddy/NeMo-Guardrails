@@ -78,6 +78,8 @@ def test_prompt_contains_written_policy_and_marks_event_untrusted():
     assert "UNTRUSTED_EVENT_JSON" in prompt
     assert "OUTPUT_VALIDATION_RULES" in prompt
     assert "policy_ids as []" in prompt
+    assert "VALID_ALLOW_EXAMPLE_JSON" in prompt
+    assert '"risk_score": 0.1' in prompt
     assert "INJ-01" in prompt
     assert "ignore this policy" in prompt
 
@@ -114,6 +116,7 @@ def test_judge_repairs_one_invalid_response_without_relaxing_policy_validation()
     assert len(backend.prompts) == 2
     assert detector.repair_attempts == 1
     assert "REPAIR_REQUIRED" in backend.prompts[1]
+    assert "judge_output_schema_invalid" in backend.prompts[1]
 
 
 def test_judge_fails_closed_after_one_invalid_repair_attempt():
@@ -143,6 +146,34 @@ def test_judge_block_is_combined_with_rules():
     assert verdict.decision is Decision.BLOCK
     assert "INJ-01" in verdict.policy_ids
     assert verdict.risk_score == 0.9
+
+
+def test_judge_accepts_secondary_policy_ids_from_other_categories():
+    detector = PolicyJudgeDetector(
+        FakeBackend(
+            response(
+                "block",
+                policy_ids=["INJ-01", "DLP-PII"],
+                risk_category="prompt_injection",
+                evidence_summary="attempted instruction override and data disclosure",
+                explanation="The primary finding is a prompt-injection attempt.",
+            )
+        )
+    )
+
+    result = detector.detect(event())
+
+    assert result.decision is Decision.BLOCK
+    assert result.policy_ids == ("INJ-01", "DLP-PII")
+
+
+def test_judge_accepts_null_representations_of_empty_optional_fields():
+    payload = json.loads(response())
+    payload.update({"policy_ids": None, "evidence_summary": None, "explanation": None})
+
+    result = PolicyJudgeDetector(FakeBackend(json.dumps(payload))).detect(event())
+
+    assert result.decision is Decision.ALLOW
 
 
 @pytest.mark.parametrize(

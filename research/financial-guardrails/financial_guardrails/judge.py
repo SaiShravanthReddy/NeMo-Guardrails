@@ -124,6 +124,24 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
         "sanitized_content": "required only for sanitize; otherwise null",
         "risk_score": "number from 0.0 (safe) to 1.0 (unsafe); rank confidence, not a calibrated probability",
     }
+    allow_example = {
+        "decision": "allow",
+        "policy_ids": [],
+        "risk_category": "none",
+        "evidence_summary": "",
+        "explanation": "",
+        "sanitized_content": None,
+        "risk_score": 0.1,
+    }
+    block_example = {
+        "decision": "block",
+        "policy_ids": ["INJ-01"],
+        "risk_category": "prompt_injection",
+        "evidence_summary": "attempt to override trusted instructions",
+        "explanation": "The request conflicts with trusted application instructions.",
+        "sanitized_content": None,
+        "risk_score": 0.9,
+    }
     trusted_policy = {
         "policy_id": policy.policy_id,
         "policy_version": policy.policy_version,
@@ -151,10 +169,14 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
             json.dumps(untrusted_event, ensure_ascii=False, sort_keys=True),
             "RESPONSE_SCHEMA_JSON:",
             json.dumps(response_schema, sort_keys=True),
+            "VALID_ALLOW_EXAMPLE_JSON:",
+            json.dumps(allow_example, sort_keys=True),
+            "VALID_BLOCK_EXAMPLE_JSON:",
+            json.dumps(block_example, sort_keys=True),
             "OUTPUT_VALIDATION_RULES:",
             "If decision is allow, output policy_ids as [], risk_category as none, sanitized_content as null, and risk_score below 0.5.",
             "Do not cite a policy or category when decision is allow. Any other allow combination is invalid.",
-            "For a non-allow decision, use only policy IDs listed in TRUSTED_POLICY_JSON; never invent policy IDs.",
+            "For a non-allow decision, use only policy IDs listed in TRUSTED_POLICY_JSON; never invent policy IDs. The first policy ID is primary and its category must be risk_category. Additional policy IDs may describe secondary findings.",
             "Return only the response JSON object.",
         )
     )
@@ -187,20 +209,10 @@ class PolicyJudgeDetector:
             return self._validate_response(raw)
         except JudgeOutputError as initial_error:
             last_error = initial_error
-            repair_prompt = "\n".join(
-                (
-                    prompt,
-                    "REPAIR_REQUIRED:",
-                    "Your previous response did not satisfy the required JSON contract.",
-                    "Re-evaluate the unchanged event and return exactly one valid response JSON object.",
-                    "For allow use policy_ids [], risk_category none, sanitized_content null, and risk_score below 0.5.",
-                    "For every other decision, use one or more IDs exactly as listed in TRUSTED_POLICY_JSON.",
-                )
-            )
             for _attempt in range(MAX_REPAIR_ATTEMPTS):
                 self.repair_attempts += 1
                 try:
-                    return self._validate_response(self._complete(repair_prompt))
+                    return self._validate_response(self._complete(_repair_prompt(prompt, last_error.code)))
                 except JudgeOutputError as repair_error:
                     last_error = repair_error
             raise JudgeOutputError(last_error.code) from last_error
@@ -221,9 +233,7 @@ class PolicyJudgeDetector:
         unknown = set(response.policy_ids) - self._policy_ids
         if unknown:
             raise JudgeOutputError("judge_output_unknown_policy_id")
-        if response.policy_ids and response.risk_category not in {
-            self._policy_categories[policy_id] for policy_id in response.policy_ids
-        }:
+        if response.policy_ids and response.risk_category is not self._policy_categories[response.policy_ids[0]]:
             raise JudgeOutputError("judge_output_policy_category_mismatch")
         return response
 
@@ -256,6 +266,11 @@ def _parse_judge_response(raw: str) -> JudgeResponse:
     normalized = {key: value for key, value in payload.items() if key in _RESPONSE_FIELDS}
     if isinstance(normalized.get("policy_ids"), str):
         normalized["policy_ids"] = [normalized["policy_ids"]]
+    if normalized.get("policy_ids") is None:
+        normalized["policy_ids"] = []
+    for field in ("evidence_summary", "explanation"):
+        if normalized.get(field) is None:
+            normalized[field] = ""
     if normalized.get("sanitized_content") == "":
         normalized["sanitized_content"] = None
     try:
@@ -273,3 +288,16 @@ def _load_response_payload(raw: str) -> object:
         return json.loads(text)
     except json.JSONDecodeError as exc:
         raise JudgeOutputError("judge_output_json_invalid") from exc
+
+
+def _repair_prompt(prompt: str, error_code: str) -> str:
+    return "\n".join(
+        (
+            prompt,
+            "REPAIR_REQUIRED:",
+            f"The previous response failed validation with code: {error_code}.",
+            "Re-evaluate the unchanged event and return exactly one valid response JSON object.",
+            "For allow use policy_ids [], risk_category none, sanitized_content null, and risk_score below 0.5.",
+            "For every other decision, use one or more IDs exactly as listed in TRUSTED_POLICY_JSON.",
+        )
+    )
