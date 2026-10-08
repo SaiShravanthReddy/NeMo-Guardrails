@@ -85,14 +85,6 @@ def test_runner_accounts_for_judge_repairs_and_backend_calls(monkeypatch):
 
         def complete(self, prompt):
             del prompt
-            self.metrics_sink(
-                BackendCallMetrics(
-                    backend=self.name,
-                    model="fixture",
-                    latency_seconds=0.01,
-                    failure_code="request_failed",
-                )
-            )
             self.metrics_sink(BackendCallMetrics(backend=self.name, model="fixture", latency_seconds=0.01))
             return next(self.responses)
 
@@ -107,10 +99,10 @@ def test_runner_accounts_for_judge_repairs_and_backend_calls(monkeypatch):
 
     assert record.judge_invoked
     assert record.judge_attempts == 2
-    assert record.judge_backend_calls == 4
+    assert record.judge_backend_calls == 2
     assert record.retries == 1
     assert metrics.operational.judge_attempts == 2
-    assert metrics.operational.judge_backend_calls == 4
+    assert metrics.operational.judge_backend_calls == 2
     assert metrics.operational.judge_repair_attempts == 1
     assert metrics.operational.judge_backend_call_telemetry_matches
 

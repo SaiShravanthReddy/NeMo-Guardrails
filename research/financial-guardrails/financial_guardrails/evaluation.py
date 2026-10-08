@@ -935,7 +935,7 @@ def _operational_metrics(
         judge_backend_calls=sum(record.judge_backend_calls for record in records),
         judge_repair_attempts=sum(record.retries for record in records),
         judge_backend_call_telemetry_matches=(
-            sum(record.judge_backend_calls for record in records) >= sum(record.judge_attempts for record in records)
+            sum(record.judge_attempts for record in records) == sum(record.judge_backend_calls for record in records)
         ),
         rules_interventions=sum(record.rules_intervened for record in records),
         rules_intervention_rate=_ratio(sum(record.rules_intervened for record in records), len(records)),
