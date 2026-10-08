@@ -147,6 +147,38 @@ def test_provider_error_does_not_expose_response_body(monkeypatch):
     assert metrics[0].input_tokens is None
 
 
+def test_backend_retries_transient_provider_failure(monkeypatch):
+    metrics = []
+    calls = 0
+
+    def flaky_urlopen(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise HTTPError("https://judge.example/v1/chat/completions", 503, "unavailable", Message(), None)
+        return FakeResponse(
+            json.dumps(
+                {
+                    "choices": [{"message": {"content": '{"decision":"allow"}'}}],
+                    "usage": {"prompt_tokens": 100, "completion_tokens": 20},
+                }
+            ).encode()
+        )
+
+    monkeypatch.setattr(judge_backends, "urlopen", flaky_urlopen)
+    monkeypatch.setattr(judge_backends.time, "sleep", lambda _seconds: None)
+    backend = OpenAICompatibleJudgeBackend(
+        name="test",
+        spec=JudgeBackendSpec(base_url="https://judge.example/v1", model="test-model"),
+        api_key=None,
+        metrics_sink=metrics.append,
+    )
+
+    assert backend.complete("policy prompt") == '{"decision":"allow"}'
+    assert calls == 2
+    assert [metric.failure_code for metric in metrics] == ["request_failed", None]
+
+
 def test_registry_rejects_unknown_fields(tmp_path):
     path = tmp_path / "backends.yml"
     path.write_text(
