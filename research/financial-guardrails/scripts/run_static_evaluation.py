@@ -56,12 +56,19 @@ def main() -> None:
     parser.add_argument("--backend", choices=("rules_only", "navigator", "hipergator"), default="rules_only")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
     parser.add_argument("--resume-checkpoint", type=Path)
+    parser.add_argument(
+        "--max-cases",
+        type=int,
+        help="Evaluate a deterministic prefix of the selected split; intended for reliability gates, not reporting.",
+    )
     parser.add_argument("--inference-code-commit")
     parser.add_argument("--judge-policy-sha256")
     parser.add_argument("--bootstrap-iterations", type=int, default=1000)
     args = parser.parse_args()
     if (args.judge_mode == "rules_only") != (args.backend == "rules_only"):
         parser.error("rules_only mode requires the rules_only backend, and judge modes require a judge backend")
+    if args.max_cases is not None and args.max_cases < 1:
+        parser.error("--max-cases must be at least 1")
 
     adapter = (
         cnfinbench_adapter(args.data_dir) if args.dataset == "cnfinbench-pooled" else finvault_adapter(args.data_dir)
@@ -73,6 +80,8 @@ def main() -> None:
         if args.split == "all"
         else tuple(case for case in all_cases if assignment[case.case_id].split == args.split)
     )
+    if args.max_cases is not None:
+        cases = tuple(sorted(cases, key=lambda case: case.case_id)[: args.max_cases])
     if not cases:
         raise SystemExit("selected split is empty")
     code_commit = args.inference_code_commit or _git_commit()
@@ -99,6 +108,7 @@ def main() -> None:
                 "backend": args.backend,
                 "judge_mode": args.judge_mode,
                 "split": args.split,
+                "max_cases": args.max_cases,
             },
             sort_keys=True,
         ).encode()
@@ -129,6 +139,7 @@ def main() -> None:
         dataset_sha256=dataset_sha256,
         metadata_sha256=metadata_sha256,
         expected_records=len(cases),
+        case_limit=args.max_cases,
         policy_id=policy.policy_id,
         policy_version=policy.policy_version,
         policy_sha256=policy_sha256,
