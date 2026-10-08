@@ -138,9 +138,10 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 
 ### Evaluation protocol requested in the 2026-10-01 lab meeting
 
-- [ ] Confirm with Ani the labels, denominators, and primary metrics for separate
-  attack-attempt and attack-success evaluations.
-  Verify: write the agreed protocol before tuning or final evaluation.
+- [x] Select labels, denominators, and primary metrics for separate attack-attempt
+  and attack-success evaluations; see `EVALUATION_PROTOCOL.md`.
+  Follow-up: share the protocol with Ani and record any agreed change before
+  tuning or final evaluation.
 - [ ] Add separate attack-attempt and attack-success reporting. FinVault's retained
   `attack_success` annotation is available; CNFinBench needs a confirmed equivalent
   label or an explicit statement that it is unavailable.
