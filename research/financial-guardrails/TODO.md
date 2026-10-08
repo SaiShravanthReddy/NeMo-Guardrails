@@ -120,7 +120,7 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   judge-output reliability work.
 - [ ] Run the approved full evaluations and produce a reproducible aggregate report.
 
-## 3. Current pending work (updated 2026-10-03)
+## 3. Current pending work (updated 2026-10-08)
 
 ### LLM reliability and backend selection
 
@@ -129,8 +129,10 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   Blocker: FinVault pilots still have detector errors (NaviGator: 16--17 of 64;
   local Qwen: 17 of 64).
   Verify: a repeated FinVault pilot has zero detector errors.
-- [ ] Record judge repair attempts in content-free per-case telemetry.
-  Verify: aggregate retry count agrees with backend-call telemetry.
+- [x] Record judge repair attempts, logical judge attempts, and observed backend
+  calls in content-free per-case telemetry.
+  Verify: offline test coverage confirms aggregate call accounting; repeat the
+  check on each live pilot artifact.
 - [ ] Compare valid CNFinBench pilots: NaviGator cascade versus all-events, and
   select a backend/mode only after a zero-error FinVault pilot.
   Verify: compare coverage, balanced accuracy, F1, latency, and cost on the same
@@ -142,15 +144,17 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   and attack-success evaluations; see `EVALUATION_PROTOCOL.md`.
   Follow-up: share the protocol with Ani and record any agreed change before
   tuning or final evaluation.
-- [ ] Add separate attack-attempt and attack-success reporting. FinVault's retained
-  `attack_success` annotation is available; CNFinBench needs a confirmed equivalent
-  label or an explicit statement that it is unavailable.
-  Verify: result artifacts and report tables keep the two tasks separate.
-- [ ] Define how `require_confirmation` is counted for each task.
-  Verify: the decision mapping is documented and covered by tests.
-- [ ] Report realistic per-conversation latency (median and p95) for every valid
-  configuration on CNFinBench and FinVault.
-  Verify: timing excludes model startup, batching, and training time.
+- [x] Add separate attack-attempt and attack-success reporting. FinVault's retained
+  `attack_success` annotation is available; CNFinBench is explicitly reported as
+  unavailable for this task unless an equivalent label is verified.
+  Verify: artifacts and report tables keep the tasks separate.
+- [x] Define how `require_confirmation` is counted for each task.
+  Verify: only `block`, `sanitize`, and `require_confirmation` count as
+  interventions; `log_only` is covered by tests and remains audit-only.
+- [x] Implement per-conversation median and p95 latency reporting for every
+  artifact.
+  Verify: timing excludes model startup, batching, and training time; report
+  measured values only after valid CNFinBench and FinVault runs complete.
 
 ### Final experiments and reporting
 
