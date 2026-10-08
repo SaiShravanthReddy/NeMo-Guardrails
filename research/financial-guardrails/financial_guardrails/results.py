@@ -48,6 +48,7 @@ class ExperimentManifest(BaseModel):
     dataset_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     metadata_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     expected_records: int = Field(ge=1)
+    case_limit: int | None = Field(default=None, ge=1)
     policy_id: str = Field(min_length=1)
     policy_version: str = Field(min_length=1)
     policy_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
