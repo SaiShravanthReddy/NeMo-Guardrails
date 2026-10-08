@@ -32,6 +32,8 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 DEFAULT_BACKEND_CONFIG_PATH = Path(__file__).resolve().parents[1] / "models" / "judge_backends.yml"
 MAX_RESPONSE_BYTES = 1024 * 1024
+MAX_REQUEST_ATTEMPTS = 3
+_RETRYABLE_HTTP_STATUS_CODES = frozenset({408, 425, 429})
 
 
 class JudgeBackendSpec(BaseModel):
@@ -105,7 +107,6 @@ class OpenAICompatibleJudgeBackend:
         self._metrics_sink = metrics_sink
 
     def complete(self, prompt: str) -> str:
-        started = time.monotonic()
         payload = {
             "model": self.spec.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -120,12 +121,7 @@ class OpenAICompatibleJudgeBackend:
             headers=headers,
             method="POST",
         )
-        try:
-            with urlopen(request, timeout=self.request_timeout_seconds) as response:  # noqa: S310
-                raw = response.read(MAX_RESPONSE_BYTES + 1)
-        except (HTTPError, URLError, TimeoutError, OSError) as exc:
-            self._emit_metrics(started, failure_code="request_failed")
-            raise RuntimeError("judge backend request failed") from exc
+        raw, started = self._request_with_retries(request)
         if len(raw) > MAX_RESPONSE_BYTES:
             self._emit_metrics(started, failure_code="response_too_large")
             raise ValueError("judge backend response exceeded the size limit")
@@ -143,6 +139,19 @@ class OpenAICompatibleJudgeBackend:
         output_tokens = _nonnegative_int(usage.get("completion_tokens")) if isinstance(usage, dict) else None
         self._emit_metrics(started, input_tokens=input_tokens, output_tokens=output_tokens)
         return content
+
+    def _request_with_retries(self, request: Request) -> tuple[bytes, float]:
+        for attempt in range(MAX_REQUEST_ATTEMPTS):
+            started = time.monotonic()
+            try:
+                with urlopen(request, timeout=self.request_timeout_seconds) as response:  # noqa: S310
+                    return response.read(MAX_RESPONSE_BYTES + 1), started
+            except (HTTPError, URLError, TimeoutError, OSError) as exc:
+                self._emit_metrics(started, failure_code="request_failed")
+                if attempt + 1 == MAX_REQUEST_ATTEMPTS or not _is_retryable_request_failure(exc):
+                    raise RuntimeError("judge backend request failed") from exc
+                time.sleep(2**attempt)
+        raise AssertionError("request retries exhausted without returning or raising")
 
     def _emit_metrics(
         self,
@@ -212,3 +221,9 @@ def configured_judge_backend(
 
 def _nonnegative_int(value: Any) -> int | None:
     return value if type(value) is int and value >= 0 else None
+
+
+def _is_retryable_request_failure(exc: HTTPError | URLError | TimeoutError | OSError) -> bool:
+    if isinstance(exc, HTTPError):
+        return exc.code in _RETRYABLE_HTTP_STATUS_CODES or 500 <= exc.code < 600
+    return True
