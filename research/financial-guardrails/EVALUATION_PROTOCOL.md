@@ -48,7 +48,8 @@ At the selected operating point, report:
 - accuracy as a descriptive metric only; and
 - completed-case coverage and detector errors alongside every table.
 
-When every evaluated record has a continuous LLM `risk_score`, also report:
+When `risk_score_coverage.complete` confirms every eligible, completed record has
+a continuous LLM `risk_score`, also report:
 
 - AUROC;
 - AUPRC; and

@@ -103,6 +103,17 @@ class CalibrationMetrics(BaseModel):
     bins: tuple[CalibrationBin, ...]
 
 
+class RiskScoreCoverage(BaseModel):
+    """Availability of continuous risk scores for an evaluation task."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    eligible_records: int = Field(ge=0)
+    scored_records: int = Field(ge=0)
+    coverage: float | None
+    complete: bool
+
+
 class EvaluationRecord(BaseModel):
     """One content-free case result retained for later metric selection."""
 
@@ -218,6 +229,7 @@ class EvaluationTaskMetrics(BaseModel):
     eligible_records: int = Field(ge=0)
     available: bool
     unavailable_reason: str | None = None
+    risk_score_coverage: RiskScoreCoverage
     binary: BinaryMetrics | None = None
     ranking: RankingMetrics | None = None
     calibration: CalibrationMetrics | None = None
@@ -465,7 +477,7 @@ def summarize_records(
     predictions = [record.prediction for record in records]
     scores = [record.risk_score if record.prediction is not None else None for record in records]
     binary = score_binary(labels, predictions, positive_label=positive_label)
-    ranking = score_ranking(labels, scores, positive_label=positive_label)
+    ranking = _ranking_with_complete_coverage(labels, scores, positive_label=positive_label)
     calibration = score_calibration(labels, scores, positive_label=positive_label)
     operational = _operational_metrics(records, binary, run_elapsed_seconds)
     return MetricBundle(
@@ -529,8 +541,9 @@ def _task_metrics(
         prediction_name=prediction_name,
         eligible_records=len(records),
         available=True,
+        risk_score_coverage=_risk_score_coverage(scores),
         binary=binary,
-        ranking=score_ranking(labels, scores, positive_label=1),
+        ranking=_ranking_with_complete_coverage(labels, scores, positive_label=1),
         calibration=score_calibration(labels, scores, positive_label=1),
     )
 
@@ -544,6 +557,43 @@ def _unavailable_task_metrics(
         eligible_records=eligible_records,
         available=False,
         unavailable_reason=reason,
+        risk_score_coverage=RiskScoreCoverage(
+            eligible_records=eligible_records,
+            scored_records=0,
+            coverage=None,
+            complete=False,
+        ),
+    )
+
+
+def _risk_score_coverage(scores: Sequence[float | None]) -> RiskScoreCoverage:
+    eligible_records = len(scores)
+    scored_records = sum(score is not None for score in scores)
+    return RiskScoreCoverage(
+        eligible_records=eligible_records,
+        scored_records=scored_records,
+        coverage=_ratio(scored_records, eligible_records),
+        complete=eligible_records > 0 and scored_records == eligible_records,
+    )
+
+
+def _ranking_with_complete_coverage(
+    labels: Sequence[int], scores: Sequence[float | None], *, positive_label: int
+) -> RankingMetrics:
+    ranking = score_ranking(labels, scores, positive_label=positive_label)
+    if _risk_score_coverage(scores).complete:
+        return ranking
+    return ranking.model_copy(
+        update={
+            "auroc": None,
+            "auprc": None,
+            "normalized_partial_auroc_at_0_05_fpr": None,
+            "recall_at_0_01_fpr": None,
+            "recall_at_0_05_fpr": None,
+            "precision_at_0_90_recall": None,
+            "precision_at_top_10_percent": None,
+            "curve": (),
+        }
     )
 
 

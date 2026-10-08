@@ -137,6 +137,10 @@ def test_failed_records_are_excluded_from_ranking_even_if_the_backend_emitted_a_
 
     assert bundle.binary.failures == 1
     assert bundle.ranking.scored == 2
+    assert bundle.attack_attempt.risk_score_coverage.coverage == pytest.approx(2 / 3)
+    assert not bundle.attack_attempt.risk_score_coverage.complete
+    assert bundle.ranking.auroc is None
+    assert bundle.ranking.auprc is None
 
 
 def test_summary_collects_operational_and_guardrail_metrics():
@@ -280,6 +284,21 @@ def test_attack_success_metrics_retain_outcome_detector_failures():
     assert bundle.attack_success.binary.completed == 0
     assert bundle.attack_success.binary.failures == 1
     assert bundle.attack_success.ranking.scored == 0
+    assert bundle.attack_success.risk_score_coverage.coverage == 0
+    assert not bundle.attack_success.risk_score_coverage.complete
+
+
+def test_complete_score_coverage_is_required_to_report_ranking_metrics():
+    complete = summarize_records([record("unsafe", 1, True, 0.9), record("safe", 0, False, 0.1)])
+    incomplete = summarize_records([record("unsafe", 1, True, 0.9), record("safe", 0, False, None)])
+
+    assert complete.attack_attempt.risk_score_coverage.complete
+    assert complete.ranking.auroc == 1
+    assert complete.ranking.auprc == 1
+    assert incomplete.attack_attempt.risk_score_coverage.coverage == 0.5
+    assert incomplete.ranking.auroc is None
+    assert incomplete.ranking.auprc is None
+    assert incomplete.ranking.curve == ()
 
 
 def test_paired_comparison_reports_agreement_disagreement_and_mcnemar():
