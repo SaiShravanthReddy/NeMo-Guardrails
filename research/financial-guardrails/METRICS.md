@@ -8,6 +8,23 @@ detector failures, retry counts, judge/rules routing, detection turns, and decla
 slice values. They never contain prompts, conversations, model responses, secrets,
 or evidence excerpts.
 
+## Separate evaluation tasks
+
+Each artifact contains three explicit task bundles in addition to the legacy
+top-level metrics, which remain the attack-attempt metrics for compatibility:
+
+- `attack_attempt` evaluates the benchmark unsafe/malicious label against any
+  guardrail intervention.
+- `attack_success` evaluates FinVault's `attack_success` annotation against an
+  intervention derived only from output, tool-call, and tool-result surfaces.
+- `attack_success_for_attempted_attacks` is the same outcome task restricted to
+  records whose benchmark label indicates an attempted attack.
+
+CNFinBench has no verified attack-success annotation. Its two attack-success
+bundles are marked unavailable rather than treating a missing outcome as false.
+For every task bundle, missing outcome predictions caused by outcome-stage detector
+errors remain failures and reduce coverage; they are never converted to allow.
+
 ## Metrics implemented now
 
 ### Classification

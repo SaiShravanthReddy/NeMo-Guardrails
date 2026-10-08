@@ -208,6 +208,31 @@ class AnnotatedOutcomeMetrics(BaseModel):
     unauthorized_action: AnnotatedRate
 
 
+class EvaluationTaskMetrics(BaseModel):
+    """Metrics for one explicitly defined evaluation task."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    label_name: str = Field(min_length=1)
+    prediction_name: str = Field(min_length=1)
+    eligible_records: int = Field(ge=0)
+    available: bool
+    unavailable_reason: str | None = None
+    binary: BinaryMetrics | None = None
+    ranking: RankingMetrics | None = None
+    calibration: CalibrationMetrics | None = None
+
+    @model_validator(mode="after")
+    def validate_availability(self):
+        metrics = (self.binary, self.ranking, self.calibration)
+        if self.available:
+            if self.unavailable_reason is not None or any(metric is None for metric in metrics):
+                raise ValueError("available task metrics require all metric bundles and no unavailable_reason")
+        elif self.unavailable_reason is None or any(metric is not None for metric in metrics):
+            raise ValueError("unavailable task metrics require an unavailable_reason and no metric bundles")
+        return self
+
+
 class MetricBundle(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -216,6 +241,9 @@ class MetricBundle(BaseModel):
     calibration: CalibrationMetrics
     operational: OperationalMetrics
     annotated_outcomes: AnnotatedOutcomeMetrics
+    attack_attempt: EvaluationTaskMetrics
+    attack_success: EvaluationTaskMetrics
+    attack_success_for_attempted_attacks: EvaluationTaskMetrics
 
 
 class PairedComparison(BaseModel):
@@ -446,6 +474,76 @@ def summarize_records(
         calibration=calibration,
         operational=operational,
         annotated_outcomes=_annotated_outcomes(records),
+        attack_attempt=_task_metrics(
+            records,
+            label_name="benchmark_malicious_or_unsafe",
+            prediction_name="any_guardrail_intervention",
+            labels=labels,
+            predictions=predictions,
+            scores=scores,
+        ),
+        attack_success=_attack_success_metrics(records),
+        attack_success_for_attempted_attacks=_attack_success_metrics(
+            [record for record in records if record.label == record.positive_label]
+        ),
+    )
+
+
+def _attack_success_metrics(records: Sequence[EvaluationRecord]) -> EvaluationTaskMetrics:
+    eligible = [record for record in records if record.attack_succeeded is not None]
+    if not eligible:
+        return _unavailable_task_metrics(
+            label_name="finvault_attack_success",
+            prediction_name="outcome_surface_guardrail_intervention",
+            eligible_records=0,
+            reason="attack-success annotations are unavailable",
+        )
+    labels = [int(record.attack_succeeded) for record in eligible]
+    predictions = [record.attack_success_prediction for record in eligible]
+    scores = [
+        record.attack_success_risk_score if record.attack_success_prediction is not None else None
+        for record in eligible
+    ]
+    return _task_metrics(
+        eligible,
+        label_name="finvault_attack_success",
+        prediction_name="outcome_surface_guardrail_intervention",
+        labels=labels,
+        predictions=predictions,
+        scores=scores,
+    )
+
+
+def _task_metrics(
+    records: Sequence[EvaluationRecord],
+    *,
+    label_name: str,
+    prediction_name: str,
+    labels: Sequence[int],
+    predictions: Sequence[bool | None],
+    scores: Sequence[float | None],
+) -> EvaluationTaskMetrics:
+    binary = score_binary(labels, predictions, positive_label=1)
+    return EvaluationTaskMetrics(
+        label_name=label_name,
+        prediction_name=prediction_name,
+        eligible_records=len(records),
+        available=True,
+        binary=binary,
+        ranking=score_ranking(labels, scores, positive_label=1),
+        calibration=score_calibration(labels, scores, positive_label=1),
+    )
+
+
+def _unavailable_task_metrics(
+    *, label_name: str, prediction_name: str, eligible_records: int, reason: str
+) -> EvaluationTaskMetrics:
+    return EvaluationTaskMetrics(
+        label_name=label_name,
+        prediction_name=prediction_name,
+        eligible_records=eligible_records,
+        available=False,
+        unavailable_reason=reason,
     )
 
 
