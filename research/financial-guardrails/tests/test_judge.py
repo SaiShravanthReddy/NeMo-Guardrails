@@ -149,15 +149,15 @@ def test_judge_block_is_combined_with_rules():
     assert verdict.risk_score == 0.9
 
 
-def test_judge_accepts_secondary_policy_ids_from_other_categories():
+def test_judge_accepts_a_category_matching_any_listed_policy():
     detector = PolicyJudgeDetector(
         FakeBackend(
             response(
                 "block",
-                policy_ids=["INJ-01", "DLP-PII"],
+                policy_ids=["DLP-PII", "INJ-01"],
                 risk_category="prompt_injection",
                 evidence_summary="attempted instruction override and data disclosure",
-                explanation="The primary finding is a prompt-injection attempt.",
+                explanation="The finding includes a prompt-injection attempt.",
             )
         )
     )
@@ -165,7 +165,7 @@ def test_judge_accepts_secondary_policy_ids_from_other_categories():
     result = detector.detect(event())
 
     assert result.decision is Decision.BLOCK
-    assert result.policy_ids == ("INJ-01", "DLP-PII")
+    assert result.policy_ids == ("DLP-PII", "INJ-01")
 
 
 def test_judge_accepts_null_representations_of_empty_optional_fields():
