@@ -24,7 +24,7 @@ from financial_guardrails.evaluation import (
     score_slices,
     summarize_records,
 )
-from financial_guardrails.reporting import render_latency_table
+from financial_guardrails.reporting import render_evaluation_report, render_latency_table
 from financial_guardrails.schema import Decision, RiskCategory, Surface
 
 
@@ -210,6 +210,19 @@ def test_latency_report_uses_per_conversation_p50_and_p95():
     report = render_latency_table([("fixture", metrics)])
 
     assert "| fixture | 2 | 3.000 | 4.800 |" in report
+
+
+def test_evaluation_report_keeps_attack_tasks_separate_and_marks_unavailable_data():
+    metrics = summarize_records([record("cnfinbench", 1, True, 0.9, latency_seconds=1)])
+
+    report = render_evaluation_report([("fixture", metrics)])
+
+    assert "## Attack-attempt detection" in report
+    assert "## FinVault attack-success detection" in report
+    assert "| fixture | 1 | 1 | 100.0%" in report
+    assert "| fixture | 0 | unavailable" in report
+    assert "## Operational reliability" in report
+    assert "## Per-conversation latency" in report
 
 
 def test_summary_keeps_attack_attempt_and_attack_success_tasks_separate():
