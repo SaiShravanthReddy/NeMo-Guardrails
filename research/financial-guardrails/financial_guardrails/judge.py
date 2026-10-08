@@ -196,6 +196,7 @@ class PolicyJudgeDetector:
         self._policy_ids = {entry.id for entry in self.policy.policies}
         self._policy_categories = {entry.id: entry.category for entry in self.policy.policies}
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="policy-judge")
+        self.completion_attempts = 0
         self.repair_attempts = 0
 
     def detect(self, event: SecurityEvent) -> DetectorResult:
@@ -218,6 +219,7 @@ class PolicyJudgeDetector:
             raise JudgeOutputError(last_error.code) from last_error
 
     def _complete(self, prompt: str) -> str:
+        self.completion_attempts += 1
         future = self._executor.submit(self.backend.complete, prompt)
         try:
             raw = future.result(timeout=self.timeout_seconds)

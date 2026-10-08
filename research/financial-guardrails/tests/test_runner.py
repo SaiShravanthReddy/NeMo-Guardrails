@@ -16,7 +16,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import json
+
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
+from financial_guardrails.evaluation import summarize_records
+from financial_guardrails.judge_backends import BackendCallMetrics
 from financial_guardrails.runner import _case_record, evaluate_cases
 from financial_guardrails.schema import Decision, Mode, RiskCategory, Surface, Verdict
 
@@ -52,6 +56,55 @@ def test_runner_reports_resumed_and_completed_progress(tmp_path):
         progress_sink=lambda completed, total: updates.append((completed, total)),
     )
     assert updates == [(0, 2), (1, 2), (2, 2)]
+
+
+def test_runner_accounts_for_judge_repairs_and_backend_calls(monkeypatch):
+    class TelemetryBackend:
+        name = "telemetry"
+
+        def __init__(self, metrics_sink):
+            self.responses = iter(
+                (
+                    json.dumps(
+                        {"decision": "allow", "policy_ids": ["INJ-01"], "risk_category": "none", "risk_score": 0.1}
+                    ),
+                    json.dumps(
+                        {
+                            "decision": "allow",
+                            "policy_ids": [],
+                            "risk_category": "none",
+                            "evidence_summary": "",
+                            "explanation": "",
+                            "sanitized_content": None,
+                            "risk_score": 0.1,
+                        }
+                    ),
+                )
+            )
+            self.metrics_sink = metrics_sink
+
+        def complete(self, prompt):
+            del prompt
+            self.metrics_sink(BackendCallMetrics(backend=self.name, model="fixture", latency_seconds=0.01))
+            return next(self.responses)
+
+    def configured_backend(_name, *, metrics_sink):
+        return TelemetryBackend(metrics_sink)
+
+    monkeypatch.setattr("financial_guardrails.runner.configured_judge_backend", configured_backend)
+
+    records = evaluate_cases((_case("safe", "Hello"),), judge_mode="all_events", backend_name="fixture")
+    record = records[0]
+    metrics = summarize_records(records)
+
+    assert record.judge_invoked
+    assert record.judge_attempts == 2
+    assert record.judge_backend_calls == 2
+    assert record.retries == 1
+    assert metrics.operational.judge_attempts == 2
+    assert metrics.operational.judge_backend_calls == 2
+    assert metrics.operational.judge_repair_attempts == 1
+    assert metrics.operational.judge_backend_call_telemetry_matches
 
 
 def _verdict(decision, score, *, detector_error=False):

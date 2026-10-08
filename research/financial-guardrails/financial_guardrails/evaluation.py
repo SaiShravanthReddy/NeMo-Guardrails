@@ -134,6 +134,8 @@ class EvaluationRecord(BaseModel):
     first_detection_turn: int | None = Field(default=None, ge=0)
     dangerous_action_turn: int | None = Field(default=None, ge=0)
     judge_invoked: bool = False
+    judge_attempts: int = Field(default=0, ge=0)
+    judge_backend_calls: int = Field(default=0, ge=0)
     rules_intervened: bool = False
     latency_seconds: float | None = Field(default=None, ge=0)
     time_to_first_token_seconds: float | None = Field(default=None, ge=0)
@@ -175,6 +177,10 @@ class OperationalMetrics(BaseModel):
     retries: int = Field(ge=0)
     judge_invocations: int = Field(ge=0)
     judge_invocation_rate: float | None
+    judge_attempts: int = Field(ge=0)
+    judge_backend_calls: int = Field(ge=0)
+    judge_repair_attempts: int = Field(ge=0)
+    judge_backend_call_telemetry_matches: bool
     rules_interventions: int = Field(ge=0)
     rules_intervention_rate: float | None
     decision_counts: dict[str, int]
@@ -915,6 +921,12 @@ def _operational_metrics(
         retries=sum(record.retries for record in records),
         judge_invocations=sum(record.judge_invoked for record in records),
         judge_invocation_rate=_ratio(sum(record.judge_invoked for record in records), len(records)),
+        judge_attempts=sum(record.judge_attempts for record in records),
+        judge_backend_calls=sum(record.judge_backend_calls for record in records),
+        judge_repair_attempts=sum(record.retries for record in records),
+        judge_backend_call_telemetry_matches=(
+            sum(record.judge_attempts for record in records) == sum(record.judge_backend_calls for record in records)
+        ),
         rules_interventions=sum(record.rules_intervened for record in records),
         rules_intervention_rate=_ratio(sum(record.rules_intervened for record in records), len(records)),
         decision_counts=dict(Counter(record.decision.value for record in records if record.decision is not None)),
