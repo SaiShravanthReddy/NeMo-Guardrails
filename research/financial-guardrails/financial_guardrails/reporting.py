@@ -104,7 +104,7 @@ def _render_operational_table(runs: Sequence[tuple[str, MetricBundle]]) -> str:
     lines = [
         "## Operational reliability",
         "",
-        "| Run | Detector errors | Judge conversations | Judge attempts | Observed backend calls | Judge repairs | Telemetry matches | Estimated cost (USD) |",
+        "| Run | Detector errors | Judge conversations | Logical judge attempts | Observed backend calls | Judge repairs | Exact attempt/call match | Estimated cost (USD) |",
         "| --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |",
     ]
     for name, metrics in runs:
