@@ -80,6 +80,16 @@ The shared NaviGator/local backend emits content-free latency, token, estimated-
 and failure telemetry. The current non-streaming client cannot measure time to first
 token, so that field remains empty unless a later streaming runner supplies it.
 
+Per-conversation latency starts after the backend is configured and ends after one
+case's messages have been screened. It includes rule evaluation, judge calls, and
+bounded judge-output repair attempts for that case. It excludes scheduler queueing,
+model startup, model loading, and unrelated batch work. Render p50/p95 from one or
+more artifacts with:
+
+```bash
+uv run --locked python -m scripts.report_latency outputs/<artifact>.json
+```
+
 ### Slices, uncertainty, and comparisons
 
 - The full metric bundle can be recomputed for any recorded slice, such as risk

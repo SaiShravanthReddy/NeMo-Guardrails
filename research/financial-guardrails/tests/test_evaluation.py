@@ -24,6 +24,7 @@ from financial_guardrails.evaluation import (
     score_slices,
     summarize_records,
 )
+from financial_guardrails.reporting import render_latency_table
 from financial_guardrails.schema import Decision, RiskCategory, Surface
 
 
@@ -195,6 +196,16 @@ def test_summary_collects_operational_and_guardrail_metrics():
     assert bundle.annotated_outcomes.authorization_correctness.rate == 1
     assert bundle.annotated_outcomes.sanitization_correctness.rate is None
     assert set(score_slices(records, "scenario")) == {"benign", "injection"}
+
+
+def test_latency_report_uses_per_conversation_p50_and_p95():
+    metrics = summarize_records(
+        [record("first", 1, True, 0.9, latency_seconds=1), record("second", 0, False, 0.1, latency_seconds=5)]
+    )
+
+    report = render_latency_table([("fixture", metrics)])
+
+    assert "| fixture | 2 | 3.000 | 4.800 |" in report
 
 
 def test_summary_keeps_attack_attempt_and_attack_success_tasks_separate():
