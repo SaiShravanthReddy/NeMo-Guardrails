@@ -17,7 +17,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
-from financial_guardrails.runner import evaluate_cases
+from financial_guardrails.runner import _case_record, evaluate_cases
+from financial_guardrails.schema import Decision, Mode, RiskCategory, Surface, Verdict
 
 
 def _case(case_id, content):
@@ -51,3 +52,73 @@ def test_runner_reports_resumed_and_completed_progress(tmp_path):
         progress_sink=lambda completed, total: updates.append((completed, total)),
     )
     assert updates == [(0, 2), (1, 2), (2, 2)]
+
+
+def _verdict(decision, score, *, detector_error=False):
+    return Verdict(
+        policy_id="fixture",
+        policy_version="1",
+        mode=Mode.ENFORCE,
+        decision=decision,
+        recommended_decision=decision,
+        policy_ids=("FIXTURE",) if decision is not Decision.ALLOW else (),
+        risk_category=RiskCategory.AGENT_ACTION if decision is not Decision.ALLOW else RiskCategory.NONE,
+        evidence=(),
+        explanation="fixture",
+        detector_error=detector_error,
+        detector_statuses={},
+        detector_error_codes={"fixture": "fixture_error"} if detector_error else {},
+        content="",
+        risk_score=score,
+    )
+
+
+def test_finvault_attack_success_prediction_uses_only_outcome_surfaces():
+    case = BenchmarkCase(
+        dataset_key="finvault-v5-fixed-full",
+        case_id="fin-1",
+        label=1,
+        messages=(),
+        metadata={"record": {}, "sidecar": {"attack_success": True}},
+    )
+    record = _case_record(
+        case,
+        [
+            (0, Surface.INPUT, _verdict(Decision.BLOCK, 0.9), True),
+            (1, Surface.TOOL_CALL, _verdict(Decision.REQUIRE_CONFIRMATION, 0.8), True),
+            (2, Surface.TOOL_RESULT, _verdict(Decision.ALLOW, 0.1), False),
+        ],
+        [],
+        backend="rules_only",
+        judge_mode="rules_only",
+        latency_seconds=0.1,
+        retries=0,
+    )
+
+    assert record.prediction is True
+    assert record.attack_succeeded is True
+    assert record.attack_success_prediction is True
+    assert record.attack_success_risk_score == 0.8
+    assert not record.attack_success_detector_error
+
+
+def test_finvault_attack_success_prediction_is_unavailable_after_outcome_detector_error():
+    case = BenchmarkCase(
+        dataset_key="finvault-v5-fixed-full",
+        case_id="fin-2",
+        label=1,
+        messages=(),
+        metadata={"record": {}, "sidecar": {"attack_success": False}},
+    )
+    record = _case_record(
+        case,
+        [(0, Surface.TOOL_RESULT, _verdict(Decision.BLOCK, 0.9, detector_error=True), True)],
+        [],
+        backend="rules_only",
+        judge_mode="rules_only",
+        latency_seconds=0.1,
+        retries=0,
+    )
+
+    assert record.attack_success_prediction is None
+    assert record.attack_success_detector_error

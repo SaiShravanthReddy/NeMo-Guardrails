@@ -142,6 +142,9 @@ class EvaluationRecord(BaseModel):
     confirmation_appropriate: bool | None = None
     unauthorized_disclosure: bool | None = None
     unauthorized_action: bool | None = None
+    attack_success_prediction: bool | None = None
+    attack_success_risk_score: float | None = Field(default=None, ge=0, le=1)
+    attack_success_detector_error: bool = False
 
     @model_validator(mode="after")
     def validate_completion(self):

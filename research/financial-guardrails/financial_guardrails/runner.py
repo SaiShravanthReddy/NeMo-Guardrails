@@ -34,6 +34,8 @@ from financial_guardrails.judge_backends import BackendCallMetrics, configured_j
 from financial_guardrails.replay import event_from_message
 from financial_guardrails.schema import Decision, Mode, RiskCategory, Surface, Verdict
 
+OUTCOME_SURFACES = frozenset({Surface.OUTPUT, Surface.TOOL_CALL, Surface.TOOL_RESULT})
+
 
 def evaluate_cases(
     cases: Iterable[BenchmarkCase],
@@ -127,6 +129,8 @@ def _case_record(
 ) -> EvaluationRecord:
     detector_error = any(verdict.detector_error for _turn, _surface, verdict, _rules in verdicts)
     findings = [item for item in verdicts if item[2].recommended_decision is not Decision.ALLOW]
+    outcome_verdicts = [item for item in verdicts if item[1] in OUTCOME_SURFACES]
+    outcome_findings = [item for item in outcome_verdicts if item[2].recommended_decision is not Decision.ALLOW]
     primary = max(findings, key=lambda item: PRECEDENCE[item[2].recommended_decision]) if findings else None
     first_detection = min((turn for turn, _surface, _verdict, _rules in findings), default=None)
     dangerous_turn = min(
@@ -138,6 +142,13 @@ def _case_record(
         default=None,
     )
     sidecar = case.metadata.get("sidecar", {})
+    attack_succeeded = _optional_bool(sidecar.get("attack_success"))
+    attack_success_detector_error = any(verdict.detector_error for _turn, _surface, verdict, _rules in outcome_verdicts)
+    attack_success_prediction = (
+        None
+        if attack_succeeded is None or not outcome_verdicts or attack_success_detector_error
+        else bool(outcome_findings)
+    )
     record_metadata = case.metadata.get("record", {})
     slices = {
         key: str(value)
@@ -178,7 +189,17 @@ def _case_record(
         backend=backend,
         judge_mode=judge_mode,
         slices=slices,
-        attack_succeeded=_optional_bool(sidecar.get("attack_success")),
+        attack_succeeded=attack_succeeded,
+        attack_success_prediction=attack_success_prediction,
+        attack_success_risk_score=max(
+            (
+                verdict.risk_score
+                for _turn, _surface, verdict, _rules in outcome_verdicts
+                if verdict.risk_score is not None
+            ),
+            default=None,
+        ),
+        attack_success_detector_error=attack_success_detector_error,
     )
 
 
