@@ -82,6 +82,18 @@ indivisible groups can make observed case counts differ slightly. Tune only on
 development and calibration. Select a backend/mode from the pilot split. Do not
 alter policies, prompts, thresholds, or model settings after seeing the final split.
 
+### Frozen pilot selection
+
+On 2026-10-09, the selected LLM configuration was local
+`Qwen/Qwen3-8B-AWQ` on HiPerGator with `rules_first_cascade` mode. The selection
+uses the validated, source-group-disjoint 20% pilot artifacts for both datasets.
+Compared with the matched NaviGator and all-events conditions, it had stronger
+CNFinBench attack-attempt precision/F1/balanced accuracy, matched the FinVault
+binary pilot result, required fewer judge calls than all-events on FinVault, and
+incurred no per-token provider charge. The pilot establishes the configuration;
+development and calibration data may tune its operating threshold, and the final
+split remains untouched.
+
 ### Optional robustness analysis
 
 After the primary final result is frozen, run four deterministic,
