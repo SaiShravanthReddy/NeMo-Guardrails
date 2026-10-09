@@ -126,6 +126,17 @@ The command reports only intervals already computed in the artifact. It never
 reruns inference, and unavailable intervals remain unavailable rather than being
 estimated from a different population.
 
+Use retained development-set scores to print candidate attack-attempt thresholds
+under fixed false-positive-rate caps:
+
+```bash
+uv run --locked python -m scripts.report_risk_thresholds outputs/<development-artifact>.json
+```
+
+This report is retrospective and does not alter stored verdicts. Choose a
+candidate only from development data, validate it on calibration data, and never
+use the final split to select a threshold.
+
 ### Slices, uncertainty, and comparisons
 
 - The full metric bundle can be recomputed for any recorded slice, such as risk
