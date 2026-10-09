@@ -17,7 +17,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
-from financial_guardrails.splits import assign_splits
+from financial_guardrails.splits import assign_nonfinal_cross_validation_folds, assign_splits
 
 
 def _case(case_id, group):
@@ -47,3 +47,18 @@ def test_splits_target_the_confirmed_40_20_20_20_allocation():
         for split in ("development", "calibration", "pilot", "final")
     }
     assert counts == {"development": 4, "calibration": 2, "pilot": 2, "final": 2}
+
+
+def test_cross_validation_preserves_final_holdout_and_source_groups():
+    cases = [_case(str(index), str(index // 2)) for index in range(20)]
+    split_assignments = assign_splits(cases)
+    assignments = assign_nonfinal_cross_validation_folds(cases)
+
+    final_ids = {item.case_id for item in split_assignments if item.split == "final"}
+    assert {item.case_id for item in assignments}.isdisjoint(final_ids)
+    assert len(assignments) == len(cases) - len(final_ids)
+    assert len({item.fold for item in assignments}) == 4
+    folds_by_group = {}
+    for assignment in assignments:
+        folds_by_group.setdefault(assignment.group_id, set()).add(assignment.fold)
+    assert all(len(folds) == 1 for folds in folds_by_group.values())

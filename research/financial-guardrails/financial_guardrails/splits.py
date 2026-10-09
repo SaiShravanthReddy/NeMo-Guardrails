@@ -25,7 +25,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from financial_guardrails.datasets import BenchmarkCase
 
@@ -44,6 +44,16 @@ class SplitAssignment(BaseModel):
     case_id: str
     group_id: str
     split: SplitName
+
+
+class CrossValidationAssignment(BaseModel):
+    """A group-disjoint fold assignment within the non-final data only."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    case_id: str
+    group_id: str
+    fold: int = Field(ge=0)
 
 
 def benchmark_group_id(case: BenchmarkCase) -> str:
@@ -76,6 +86,31 @@ def assign_splits(cases: Iterable[BenchmarkCase], *, seed: str = "open-lakera-v1
     return tuple(
         SplitAssignment(case_id=case.case_id, group_id=group_id, split=group_splits[group_id])
         for case in selected_cases
+        for group_id in (benchmark_group_id(case),)
+    )
+
+
+def assign_nonfinal_cross_validation_folds(
+    cases: Iterable[BenchmarkCase], *, folds: int = 4, seed: str = "open-lakera-v1"
+) -> tuple[CrossValidationAssignment, ...]:
+    """Split only the pre-final pool into deterministic, source-group-disjoint folds."""
+    if folds < 2:
+        raise ValueError("cross-validation requires at least two folds")
+    selected_cases = tuple(cases)
+    split_by_id = {assignment.case_id: assignment.split for assignment in assign_splits(selected_cases, seed=seed)}
+    nonfinal_cases = tuple(case for case in selected_cases if split_by_id[case.case_id] != "final")
+    groups: dict[str, list[BenchmarkCase]] = defaultdict(list)
+    for case in nonfinal_cases:
+        groups[benchmark_group_id(case)].append(case)
+    counts = [0] * folds
+    group_folds: dict[str, int] = {}
+    for group_id, group_cases in sorted(groups.items(), key=lambda item: _group_sort_key(f"{seed}-cv", item[0])):
+        fold = min(range(folds), key=lambda candidate: (counts[candidate], candidate))
+        group_folds[group_id] = fold
+        counts[fold] += len(group_cases)
+    return tuple(
+        CrossValidationAssignment(case_id=case.case_id, group_id=group_id, fold=group_folds[group_id])
+        for case in nonfinal_cases
         for group_id in (benchmark_group_id(case),)
     )
 
