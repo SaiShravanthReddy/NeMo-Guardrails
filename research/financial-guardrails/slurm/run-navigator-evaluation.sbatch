@@ -15,6 +15,7 @@ set -euo pipefail
 : "${JUDGE_MODE:?Set JUDGE_MODE to all_events or rules_first_cascade}"
 SPLIT="${SPLIT:-pilot}"
 MAX_CASES="${MAX_CASES:-}"
+CASE_ID_FILE="${CASE_ID_FILE:-}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 PROJECT_PYTHON="${PROJECT_ROOT}/.venv/bin/python"
 ENV_FILE="${PROJECT_ROOT}/.env.local"
@@ -49,6 +50,11 @@ evaluation_args=(
 if [[ -n "${MAX_CASES}" ]]; then
   [[ "${MAX_CASES}" =~ ^[1-9][0-9]*$ ]] || { echo "MAX_CASES must be a positive integer" >&2; exit 2; }
   evaluation_args+=(--max-cases "${MAX_CASES}")
+fi
+if [[ -n "${CASE_ID_FILE}" ]]; then
+  [[ -z "${MAX_CASES}" ]] || { echo "Set only one of MAX_CASES or CASE_ID_FILE" >&2; exit 2; }
+  test -r "${CASE_ID_FILE}"
+  evaluation_args+=(--case-id-file "${CASE_ID_FILE}")
 fi
 
 echo "MILESTONE 2/3: running ${DATASET} ${JUDGE_MODE} evaluation"

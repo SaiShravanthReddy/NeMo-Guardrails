@@ -56,10 +56,16 @@ def main() -> None:
     parser.add_argument("--backend", choices=("rules_only", "navigator", "hipergator"), default="rules_only")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
     parser.add_argument("--resume-checkpoint", type=Path)
-    parser.add_argument(
+    selection_group = parser.add_mutually_exclusive_group()
+    selection_group.add_argument(
         "--max-cases",
         type=int,
         help="Evaluate a deterministic prefix of the selected split; intended for reliability gates, not reporting.",
+    )
+    selection_group.add_argument(
+        "--case-id-file",
+        type=Path,
+        help="Evaluate exactly the newline-delimited case IDs in this file; intended for targeted reliability replay.",
     )
     parser.add_argument("--inference-code-commit")
     parser.add_argument("--judge-policy-sha256")
@@ -80,7 +86,15 @@ def main() -> None:
         if args.split == "all"
         else tuple(case for case in all_cases if assignment[case.case_id].split == args.split)
     )
-    if args.max_cases is not None:
+    case_selection_sha256 = _sha256(args.case_id_file) if args.case_id_file else None
+    if args.case_id_file:
+        requested_ids = _load_case_ids(args.case_id_file)
+        selected_by_id = {case.case_id: case for case in cases}
+        missing = set(requested_ids) - set(selected_by_id)
+        if missing:
+            parser.error("--case-id-file contains IDs outside the selected split")
+        cases = tuple(selected_by_id[case_id] for case_id in requested_ids)
+    elif args.max_cases is not None:
         cases = tuple(sorted(cases, key=lambda case: case.case_id)[: args.max_cases])
     if not cases:
         raise SystemExit("selected split is empty")
@@ -109,6 +123,7 @@ def main() -> None:
                 "judge_mode": args.judge_mode,
                 "split": args.split,
                 "max_cases": args.max_cases,
+                "case_selection_sha256": case_selection_sha256,
             },
             sort_keys=True,
         ).encode()
@@ -140,6 +155,7 @@ def main() -> None:
         metadata_sha256=metadata_sha256,
         expected_records=len(cases),
         case_limit=args.max_cases,
+        case_selection_sha256=case_selection_sha256,
         policy_id=policy.policy_id,
         policy_version=policy.policy_version,
         policy_sha256=policy_sha256,
@@ -191,6 +207,18 @@ def _valid_commit(value: str) -> bool:
 
 def _valid_sha256(value: str) -> bool:
     return len(value) == 64 and all(character in "0123456789abcdef" for character in value)
+
+
+def _load_case_ids(path: Path) -> tuple[str, ...]:
+    try:
+        case_ids = tuple(line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+    except OSError as exc:
+        raise ValueError("could not read --case-id-file") from exc
+    if not case_ids:
+        raise ValueError("--case-id-file must contain at least one case ID")
+    if len(case_ids) != len(set(case_ids)):
+        raise ValueError("--case-id-file contains duplicate case IDs")
+    return case_ids
 
 
 def _inference_elapsed_seconds(records: tuple[EvaluationRecord, ...]) -> float:
