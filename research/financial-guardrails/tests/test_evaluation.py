@@ -222,6 +222,7 @@ def test_evaluation_report_keeps_attack_tasks_separate_and_marks_unavailable_dat
     assert "| fixture | 1 | 1 | 100.0%" in report
     assert "| fixture | 0 | unavailable" in report
     assert "## Operational reliability" in report
+    assert "## Decision actions and confirmation burden" in report
     assert "## Per-conversation latency" in report
 
 
