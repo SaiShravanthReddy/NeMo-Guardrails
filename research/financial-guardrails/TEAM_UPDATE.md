@@ -62,19 +62,25 @@ which motivates testing the LLM judge rather than tuning against the full sets.
 
 - Both backends pass safe/attack two-case preflights.
 - Initial pilot runs exposed malformed structured judge responses. The judge
-  now makes one bounded repair attempt and still fails closed if the repaired
-  response is invalid.
-- Repaired local-Qwen pilots reduced failures but did not eliminate them
-  (CNFinBench: 2 of 48; FinVault: 17 of 64). Their scores are therefore
-  provisional and are not reported as results.
-- Repaired NaviGator pilots are currently running. We will inspect their
-  detector-error rate before selecting a backend or scheduling full LLM runs.
+  now validates policy IDs and categories, uses bounded JSON repair, retries
+  transient backend failures, and fails closed when a response remains invalid.
+- The eight repaired 20% pilot artifacts (two datasets, two backends, and two
+  judge modes) passed schema and metric-integrity validation. They are used for
+  backend/mode selection only; they are not final held-out results.
+- The confirmed protocol reports attack attempts and attack success separately.
+  CNFinBench attempts use the harmful/harmless ID prefix and success uses
+  harmful conversations with HICS below 50. FinVault uses its supplied attempt
+  and `attack_success` annotations.
+- Development uses 40% of source groups, with 20% each for calibration, pilot,
+  and a one-time final split. Current development reliability work is resolving
+  the remaining local-Qwen unknown-policy-ID cases before any final evaluation.
 
 ## Next steps
 
-1. Finish the repaired NaviGator pilots and validate all result artifacts.
-2. Improve the remaining LLM-output reliability without weakening fail-closed
-   behavior; tune only on development/calibration splits.
-3. Run the selected valid judge configuration on held-out final splits, then
-   report deterministic and LLM-judge results separately with confidence
-   intervals and operational cost/latency metrics.
+1. Complete the local-Qwen development reliability rerun, then compare valid
+   development/calibration evidence without changing the final split.
+2. Tune policies and any score threshold only on development/calibration data;
+   select a backend/mode using the already-frozen pilot split.
+3. Run the selected configuration once on the final split, then report
+   deterministic and LLM-judge results separately with confidence intervals,
+   latency, cost, decision actions, and limitations.
