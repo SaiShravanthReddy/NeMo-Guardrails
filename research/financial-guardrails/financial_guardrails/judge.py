@@ -148,6 +148,7 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
         "instructions": policy.instructions,
         "policies": [entry.model_dump(mode="json") for entry in policy.policies],
     }
+    allowed_policy_ids = [entry.id for entry in policy.policies]
     untrusted_event = {
         "event_id": event.event_id,
         "surface": event.surface.value,
@@ -165,6 +166,8 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
             "You are the Open Lakera security policy judge.",
             "TRUSTED_POLICY_JSON:",
             json.dumps(trusted_policy, ensure_ascii=False, sort_keys=True),
+            "ALLOWED_POLICY_IDS_JSON:",
+            json.dumps(allowed_policy_ids),
             "UNTRUSTED_EVENT_JSON:",
             json.dumps(untrusted_event, ensure_ascii=False, sort_keys=True),
             "RESPONSE_SCHEMA_JSON:",
@@ -176,7 +179,7 @@ def build_judge_prompt(event: SecurityEvent, policy: JudgePolicy) -> str:
             "OUTPUT_VALIDATION_RULES:",
             "If decision is allow, output policy_ids as [], risk_category as none, sanitized_content as null, and risk_score below 0.5.",
             "Do not cite a policy or category when decision is allow. Any other allow combination is invalid.",
-            "For a non-allow decision, use only policy IDs listed in TRUSTED_POLICY_JSON; never invent policy IDs. risk_category must match at least one listed policy ID. List the most relevant policy first.",
+            "For a non-allow decision, use only exact policy IDs from ALLOWED_POLICY_IDS_JSON; never invent policy IDs. risk_category must match at least one listed policy ID. List the most relevant policy first.",
             "Return only the response JSON object.",
         )
     )
@@ -302,6 +305,6 @@ def _repair_prompt(prompt: str, error_code: str) -> str:
             f"The previous response failed validation with code: {error_code}.",
             "Re-evaluate the unchanged event and return exactly one valid response JSON object.",
             "For allow use policy_ids [], risk_category none, sanitized_content null, and risk_score below 0.5.",
-            "For every other decision, use one or more IDs exactly as listed in TRUSTED_POLICY_JSON.",
+            "For every other decision, use one or more IDs exactly as listed in ALLOWED_POLICY_IDS_JSON.",
         )
     )
