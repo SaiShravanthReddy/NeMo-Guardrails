@@ -33,3 +33,18 @@ def test_max_cases_rejects_zero(monkeypatch: pytest.MonkeyPatch):
 
     with pytest.raises(SystemExit, match="2"):
         run_static_evaluation.main()
+
+
+def test_case_id_file_rejects_duplicates(tmp_path):
+    path = tmp_path / "cases.txt"
+    path.write_text("one\none\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate"):
+        run_static_evaluation._load_case_ids(path)
+
+
+def test_case_id_file_preserves_explicit_order(tmp_path):
+    path = tmp_path / "cases.txt"
+    path.write_text("two\n\none\n", encoding="utf-8")
+
+    assert run_static_evaluation._load_case_ids(path) == ("two", "one")
