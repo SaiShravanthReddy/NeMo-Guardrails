@@ -42,7 +42,7 @@ from financial_guardrails.judge import DEFAULT_JUDGE_POLICY_PATH
 from financial_guardrails.judge_backends import load_judge_backend_registry
 from financial_guardrails.results import EvaluationArtifact, ExperimentManifest, write_evaluation_artifact
 from financial_guardrails.runner import evaluate_cases
-from financial_guardrails.splits import assign_splits
+from financial_guardrails.splits import assign_nonfinal_cross_validation_folds, assign_splits
 
 
 def main() -> None:
@@ -62,6 +62,11 @@ def main() -> None:
         type=int,
         help="Evaluate a deterministic prefix of the selected split; intended for reliability gates, not reporting.",
     )
+    parser.add_argument(
+        "--cv-fold",
+        type=int,
+        help="Evaluate one source-group-disjoint fold from the non-final pool; use only after freezing configuration.",
+    )
     selection_group.add_argument(
         "--case-id-file",
         type=Path,
@@ -75,17 +80,31 @@ def main() -> None:
         parser.error("rules_only mode requires the rules_only backend, and judge modes require a judge backend")
     if args.max_cases is not None and args.max_cases < 1:
         parser.error("--max-cases must be at least 1")
+    if args.cv_fold is not None and (args.cv_fold < 0 or args.cv_fold >= 4):
+        parser.error("--cv-fold must be between 0 and 3")
+    if args.cv_fold is not None and (args.max_cases is not None or args.case_id_file is not None):
+        parser.error("--cv-fold cannot be combined with --max-cases or --case-id-file")
 
     adapter = (
         cnfinbench_adapter(args.data_dir) if args.dataset == "cnfinbench-pooled" else finvault_adapter(args.data_dir)
     )
     all_cases = tuple(adapter.cases())
     assignment = {item.case_id: item for item in assign_splits(all_cases)}
-    cases = (
-        all_cases
-        if args.split == "all"
-        else tuple(case for case in all_cases if assignment[case.case_id].split == args.split)
-    )
+    selection_name = args.split
+    if args.cv_fold is None:
+        cases = (
+            all_cases
+            if args.split == "all"
+            else tuple(case for case in all_cases if assignment[case.case_id].split == args.split)
+        )
+    else:
+        cv_assignment = {item.case_id: item for item in assign_nonfinal_cross_validation_folds(all_cases)}
+        cases = tuple(
+            case
+            for case in all_cases
+            if cv_assignment.get(case.case_id, None) and cv_assignment[case.case_id].fold == args.cv_fold
+        )
+        selection_name = f"cv{args.cv_fold}"
     case_selection_sha256 = _sha256(args.case_id_file) if args.case_id_file else None
     if args.case_id_file:
         requested_ids = _load_case_ids(args.case_id_file)
@@ -124,11 +143,12 @@ def main() -> None:
                 "split": args.split,
                 "max_cases": args.max_cases,
                 "case_selection_sha256": case_selection_sha256,
+                "cv_fold": args.cv_fold,
             },
             sort_keys=True,
         ).encode()
     ).hexdigest()[:12]
-    run_id = f"{args.dataset}-{args.split}-{args.backend}-{args.judge_mode}-{fingerprint}"
+    run_id = f"{args.dataset}-{selection_name}-{args.backend}-{args.judge_mode}-{fingerprint}"
     started = datetime.now(timezone.utc)
     records = evaluate_cases(
         cases,
@@ -156,6 +176,7 @@ def main() -> None:
         expected_records=len(cases),
         case_limit=args.max_cases,
         case_selection_sha256=case_selection_sha256,
+        cross_validation_fold=args.cv_fold,
         policy_id=policy.policy_id,
         policy_version=policy.policy_version,
         policy_sha256=policy_sha256,

@@ -35,6 +35,17 @@ def test_max_cases_rejects_zero(monkeypatch: pytest.MonkeyPatch):
         run_static_evaluation.main()
 
 
+def test_cross_validation_fold_rejects_out_of_range(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_static_evaluation", "cnfinbench-pooled", "--cv-fold", "4"],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        run_static_evaluation.main()
+
+
 def test_case_id_file_rejects_duplicates(tmp_path):
     path = tmp_path / "cases.txt"
     path.write_text("one\none\n", encoding="utf-8")

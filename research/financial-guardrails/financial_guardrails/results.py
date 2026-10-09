@@ -50,6 +50,7 @@ class ExperimentManifest(BaseModel):
     expected_records: int = Field(ge=1)
     case_limit: int | None = Field(default=None, ge=1)
     case_selection_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    cross_validation_fold: int | None = Field(default=None, ge=0)
     policy_id: str = Field(min_length=1)
     policy_version: str = Field(min_length=1)
     policy_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
