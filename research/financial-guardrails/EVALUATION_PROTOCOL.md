@@ -82,6 +82,13 @@ indivisible groups can make observed case counts differ slightly. Tune only on
 development and calibration. Select a backend/mode from the pilot split. Do not
 alter policies, prompts, thresholds, or model settings after seeing the final split.
 
+### Optional robustness analysis
+
+After the primary final result is frozen, run four deterministic,
+source-group-disjoint folds over the non-final 80% only. This analysis measures
+stability for the already-selected configuration; it must not select policies,
+thresholds, models, or modes, and it must not include the final split.
+
 ## Required reporting
 
 For every valid configuration, report per-conversation p50 and p95 latency,
