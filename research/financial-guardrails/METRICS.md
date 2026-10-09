@@ -116,6 +116,16 @@ repeating inference:
 uv run --locked python -m scripts.report_evaluation outputs/<artifact>.json
 ```
 
+Print the stored bootstrap confidence intervals for attack-attempt metrics:
+
+```bash
+uv run --locked python -m scripts.report_confidence_intervals outputs/<artifact>.json
+```
+
+The command reports only intervals already computed in the artifact. It never
+reruns inference, and unavailable intervals remain unavailable rather than being
+estimated from a different population.
+
 ### Slices, uncertainty, and comparisons
 
 - The full metric bundle can be recomputed for any recorded slice, such as risk
