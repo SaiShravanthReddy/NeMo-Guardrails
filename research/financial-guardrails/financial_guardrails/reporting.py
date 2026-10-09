@@ -35,6 +35,7 @@ def render_evaluation_report(runs: Sequence[tuple[str, MetricBundle]]) -> str:
                 runs,
                 "attack_success_for_attempted_attacks",
             ),
+            _render_decision_action_table(runs),
             _render_operational_table(runs),
             "## Per-conversation latency\n\n" + render_latency_table(runs),
         )
@@ -119,9 +120,37 @@ def _render_operational_table(runs: Sequence[tuple[str, MetricBundle]]) -> str:
     return "\n".join(lines)
 
 
+def _render_decision_action_table(runs: Sequence[tuple[str, MetricBundle]]) -> str:
+    """Show confirmation burden separately from automatic intervention."""
+    lines = [
+        "## Decision actions and confirmation burden",
+        "",
+        "| Run | Allow | Block | Sanitize | Automatic intervention | Require confirmation | Log only |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for name, metrics in runs:
+        counts = metrics.operational.decision_counts
+        total = metrics.operational.total
+        automatic = counts.get("block", 0) + counts.get("sanitize", 0)
+        lines.append(
+            "| "
+            f"{name} | {_format_count_rate(counts.get('allow', 0), total)} | "
+            f"{_format_count_rate(counts.get('block', 0), total)} | "
+            f"{_format_count_rate(counts.get('sanitize', 0), total)} | "
+            f"{_format_count_rate(automatic, total)} | "
+            f"{_format_count_rate(counts.get('require_confirmation', 0), total)} | "
+            f"{_format_count_rate(counts.get('log_only', 0), total)} |"
+        )
+    return "\n".join(lines)
+
+
 def _format_seconds(value: float | None) -> str:
     return "unavailable" if value is None else f"{value:.3f}"
 
 
 def _format_percent(value: float | None) -> str:
     return "unavailable" if value is None else f"{value * 100:.1f}%"
+
+
+def _format_count_rate(count: int, total: int) -> str:
+    return f"{count} ({count / total * 100:.1f}%)" if total else "0 (unavailable)"
