@@ -138,6 +138,16 @@ This report is retrospective and does not alter stored verdicts. Choose a
 candidate only from development data, validate it on calibration data, and never
 use the final split to select a threshold.
 
+Summarize a dataset's four source-group-disjoint non-final cross-validation
+artifacts after the primary final result is frozen:
+
+```bash
+uv run --locked python -m scripts.report_cross_validation outputs/<cv-fold-0>.json outputs/<cv-fold-1>.json outputs/<cv-fold-2>.json outputs/<cv-fold-3>.json
+```
+
+The command rejects duplicate case IDs, missing folds, configuration mismatches,
+and any artifact containing final-split cases.
+
 ### Slices, uncertainty, and comparisons
 
 - The full metric bundle can be recomputed for any recorded slice, such as risk
