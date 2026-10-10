@@ -66,6 +66,16 @@ are unavailable for rules-only runs or incomplete score coverage; they must not
 be fabricated. AUPRC is especially important when positives are imbalanced;
 accuracy alone is not a suitable primary metric in that setting.
 
+### Threshold-free score reporting
+
+Ani confirmed on 2026-10-10 that the primary Open Lakera/NeMo condition uses
+the guardrail's policy decisions, not a score-derived operating threshold.
+Risk scores are reported as threshold-free ranking evidence through AUROC,
+AUPRC, and recall at fixed false-positive-rate points. Dataset-specific
+thresholds must not be used for the primary result. A later shared-threshold
+condition would be a separately labeled experiment, selected from pooled
+development data and validated on pooled calibration data before any final run.
+
 ## Splits and tuning discipline
 
 Keep the deterministic source-group-disjoint split assignment:

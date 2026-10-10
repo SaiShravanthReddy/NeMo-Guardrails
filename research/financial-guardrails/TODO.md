@@ -164,6 +164,9 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 - [ ] Tune policies only on development/calibration data; reserve final splits for
   final reporting.
   Dependency: a zero-error judge configuration.
+- [x] Choose score handling for the primary configuration. Ani confirmed on
+  2026-10-10 that primary reporting is threshold-free: policy decisions remain
+  the intervention, while risk scores provide ranking metrics only.
 - [ ] Run full LLM evaluations for the selected configuration(s), then produce
   aggregate results with confidence intervals, cost, latency, and limitations.
   Dependency: successful pilot validation.
