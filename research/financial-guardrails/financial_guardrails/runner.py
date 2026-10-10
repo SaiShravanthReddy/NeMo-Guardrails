@@ -181,6 +181,7 @@ def _case_record(
         detector_error=detector_error,
         failure_code=failure_code,
         policy_ids=tuple(dict.fromkeys(policy for _t, _s, v, _r in verdicts for policy in v.policy_ids)),
+        primary_policy_ids=primary[2].policy_ids if primary else (),
         risk_category=primary[2].risk_category if primary else RiskCategory.NONE,
         surface=primary[1] if primary else None,
         first_detection_turn=first_detection,
