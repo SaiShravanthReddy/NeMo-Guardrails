@@ -77,10 +77,12 @@ which motivates testing the LLM judge rather than tuning against the full sets.
 
 ## Next steps
 
-1. Complete the local-Qwen development reliability rerun, then compare valid
-   development/calibration evidence without changing the final split.
-2. Tune policies and any score threshold only on development/calibration data;
-   select a backend/mode using the already-frozen pilot split.
-3. Run the selected configuration once on the final split, then report
-   deterministic and LLM-judge results separately with confidence intervals,
-   latency, cost, decision actions, and limitations.
+The primary final evaluation is complete. Its findings are in
+[`PRIMARY_FINAL_EVALUATION_REPORT.md`](PRIMARY_FINAL_EVALUATION_REPORT.md): the
+selected local-Qwen cascade configuration is strong on CNFinBench attack
+attempts but intervenes on every FinVault final case, including every normal
+case. This is reported as a real operational limitation, not hidden by F1.
+
+The remaining planned analysis is source-group-disjoint four-fold cross-
+validation on the non-final 80%. It is a robustness analysis only and cannot
+change the frozen final result.

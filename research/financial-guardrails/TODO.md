@@ -167,8 +167,8 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 - [x] Choose score handling for the primary configuration. Ani confirmed on
   2026-10-10 that primary reporting is threshold-free: policy decisions remain
   the intervention, while risk scores provide ranking metrics only.
-- [ ] Run full LLM evaluations for the selected configuration(s), then produce
-  aggregate results with confidence intervals, cost, latency, and limitations.
-  Dependency: successful pilot validation.
+- [x] Run the selected local-Qwen cascade configuration once on each untouched
+  final split and produce the primary results report with confidence intervals,
+  cost, latency, and limitations. See `PRIMARY_FINAL_EVALUATION_REPORT.md`.
 - [ ] Update `TEAM_UPDATE.md`, `METRICS.md`, and the final report using only
   validated results; label all scores as Open Lakera/NeMo results.
