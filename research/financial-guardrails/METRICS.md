@@ -127,8 +127,8 @@ The command reports only intervals already computed in the artifact. It never
 reruns inference, and unavailable intervals remain unavailable rather than being
 estimated from a different population.
 
-Use retained development-set scores to print candidate attack-attempt thresholds
-under fixed false-positive-rate caps:
+Use retained development or calibration scores to print candidate attack-attempt
+thresholds under fixed false-positive-rate caps:
 
 ```bash
 uv run --locked python -m scripts.report_risk_thresholds outputs/<development-artifact>.json

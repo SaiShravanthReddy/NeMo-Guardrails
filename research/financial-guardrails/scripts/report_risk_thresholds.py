@@ -101,7 +101,7 @@ def main() -> None:
     artifact = read_evaluation_artifact(args.artifact)
     candidates = _candidates(artifact.records)
     run = f"{artifact.manifest.dataset_key} / {artifact.manifest.backend} / {artifact.manifest.judge_mode}"
-    print("# Development-only risk-score threshold candidates")
+    print("# Risk-score threshold candidates")
     print()
     print("These are retrospective candidates from retained attack-attempt scores. They do not change verdicts.")
     print()
