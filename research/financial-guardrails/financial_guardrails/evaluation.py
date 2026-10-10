@@ -129,6 +129,7 @@ class EvaluationRecord(BaseModel):
     detector_error: bool = False
     failure_code: str | None = None
     policy_ids: tuple[str, ...] = ()
+    primary_policy_ids: tuple[str, ...] = ()
     risk_category: RiskCategory = RiskCategory.NONE
     surface: Surface | None = None
     first_detection_turn: int | None = Field(default=None, ge=0)

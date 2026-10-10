@@ -153,6 +153,7 @@ def test_finvault_attack_success_prediction_uses_only_outcome_surfaces():
     assert record.attack_success_prediction is True
     assert record.attack_success_risk_score == 0.8
     assert not record.attack_success_detector_error
+    assert record.primary_policy_ids == ("FIXTURE",)
 
 
 def test_finvault_attack_success_prediction_is_unavailable_after_outcome_detector_error():

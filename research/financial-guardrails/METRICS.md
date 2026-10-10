@@ -2,11 +2,12 @@
 
 Every expensive inference is retained as one content-free `EvaluationRecord`. This
 lets reports select metrics later without repeating NaviGator calls or local GPU
-inference. Records contain identifiers, labels, decisions, risk scores, policy IDs,
-categories, surfaces, timing, token usage, estimated cost, GPU measurements,
-detector failures, retry counts, judge/rules routing, detection turns, and declared
-slice values. They never contain prompts, conversations, model responses, secrets,
-or evidence excerpts.
+inference. Records contain identifiers, labels, decisions, risk scores, all matched
+policy IDs, the policy IDs from the primary decision-producing verdict, categories,
+surfaces, timing, token usage, estimated cost, GPU measurements, detector failures,
+retry counts, judge/rules routing, detection turns, and declared slice values. They
+never contain prompts, conversations, model responses, secrets, or evidence
+excerpts.
 
 ## Separate evaluation tasks
 
