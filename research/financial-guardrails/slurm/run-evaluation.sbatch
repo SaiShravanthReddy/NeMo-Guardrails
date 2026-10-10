@@ -17,6 +17,7 @@ set -euo pipefail
 SPLIT="${SPLIT:-pilot}"
 MAX_CASES="${MAX_CASES:-}"
 CASE_ID_FILE="${CASE_ID_FILE:-}"
+CV_FOLD="${CV_FOLD:-}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 VLLM_BIN="${PROJECT_ROOT}/.venv-vllm/bin/vllm"
 NINJA_BIN="${PROJECT_ROOT}/.venv-vllm/bin/ninja"
@@ -75,8 +76,14 @@ if [[ -n "${MAX_CASES}" ]]; then
 fi
 if [[ -n "${CASE_ID_FILE}" ]]; then
   [[ -z "${MAX_CASES}" ]] || { echo "Set only one of MAX_CASES or CASE_ID_FILE" >&2; exit 2; }
+  [[ -z "${CV_FOLD}" ]] || { echo "CV_FOLD cannot be combined with CASE_ID_FILE" >&2; exit 2; }
   test -r "${CASE_ID_FILE}"
   evaluation_args+=(--case-id-file "${CASE_ID_FILE}")
+fi
+if [[ -n "${CV_FOLD}" ]]; then
+  [[ -z "${MAX_CASES}" ]] || { echo "CV_FOLD cannot be combined with MAX_CASES" >&2; exit 2; }
+  [[ "${CV_FOLD}" =~ ^[0-3]$ ]] || { echo "CV_FOLD must be 0, 1, 2, or 3" >&2; exit 2; }
+  evaluation_args+=(--cv-fold "${CV_FOLD}")
 fi
 
 "${PROJECT_PYTHON}" -m scripts.run_static_evaluation "${evaluation_args[@]}"
