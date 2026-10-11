@@ -1,6 +1,7 @@
 # NeMo integration points
 
-This project pins NeMo Guardrails `0.24.1` from the surrounding editable fork.
+This project supports NeMo Guardrails `>=0.24.1,<0.26` from the surrounding
+editable fork. The current fork version is recorded in each evaluation manifest.
 
 | Surface | Hook used | Enforcement evidence |
 | --- | --- | --- |
