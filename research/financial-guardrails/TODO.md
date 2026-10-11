@@ -118,7 +118,8 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   outputs before approving a full benchmark run. Repaired NaviGator CNFinBench
   pilots have zero detector errors; FinVault and local-Qwen pilots still require
   judge-output reliability work.
-- [ ] Run the approved full evaluations and produce a reproducible aggregate report.
+- [x] Run the approved full evaluations and produce reproducible final and
+  non-final robustness reports.
 
 ## 3. Current pending work (updated 2026-10-08)
 
@@ -170,5 +171,5 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
 - [x] Run the selected local-Qwen cascade configuration once on each untouched
   final split and produce the primary results report with confidence intervals,
   cost, latency, and limitations. See `PRIMARY_FINAL_EVALUATION_REPORT.md`.
-- [ ] Update `TEAM_UPDATE.md`, `METRICS.md`, and the final report using only
-  validated results; label all scores as Open Lakera/NeMo results.
+- [x] Update `TEAM_UPDATE.md` and the final report using only validated results;
+  all scores are labeled as Open Lakera/NeMo results.

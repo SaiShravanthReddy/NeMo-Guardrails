@@ -59,6 +59,25 @@ is not complete; they are intentionally not estimated from a smaller subset.
 The local Qwen model ran on HiPerGator L4 GPUs. Latency is per conversation and
 excludes scheduler queueing and model startup.
 
+## Non-final cross-validation robustness analysis
+
+After final reporting was frozen, four deterministic source-group-disjoint folds
+were evaluated over the non-final 80%. This analysis did not change policies,
+prompts, model selection, or the final results above.
+
+| Dataset and task | Mean F1 | F1 range | Mean balanced accuracy | Mean FPR | Mean AUROC | Mean AUPRC |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| CNFinBench attack attempt | 86.8% | 80.3%–89.8% | 87.2% | 10.5% | 90.3% | 90.1% |
+| CNFinBench attack success | 47.9% | 43.5%–51.5% | 53.1% | 42.1% | 52.7% | 45.9% |
+| FinVault attack attempt | 94.5% | 92.3%–96.4% | 52.0% | 93.6% | 67.6% | 94.6% |
+| FinVault attack success | 69.0% | 59.8%–74.2% | 51.2% | 95.5% | 55.3% | 60.5% |
+
+The robustness analysis supports the final interpretation. CNFinBench
+attack-attempt detection remains strong across folds. FinVault intervention
+remains overly broad, with an 84.2%–100.0% attack-attempt false-positive rate.
+Attack-success monitoring is near chance on both datasets and is not a reliable
+recovery signal.
+
 ## Interpretation
 
 The selected guardrail is effective on CNFinBench attack attempts: it has high
@@ -83,5 +102,5 @@ appropriate in production.
   commercial service.
 - CNFinBench and FinVault use different task constructions; results must remain
   separate rather than averaged into one score.
-- The planned four-fold cross-validation over the non-final 80% is a robustness
-  analysis only. It cannot alter this frozen final result.
+- The completed four-fold cross-validation over the non-final 80% is a
+  robustness analysis only. It did not alter this frozen final result.
