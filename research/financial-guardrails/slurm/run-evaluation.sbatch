@@ -18,6 +18,7 @@ SPLIT="${SPLIT:-pilot}"
 MAX_CASES="${MAX_CASES:-}"
 CASE_ID_FILE="${CASE_ID_FILE:-}"
 CV_FOLD="${CV_FOLD:-}"
+RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 VLLM_BIN="${PROJECT_ROOT}/.venv-vllm/bin/vllm"
 NINJA_BIN="${PROJECT_ROOT}/.venv-vllm/bin/ninja"
@@ -84,6 +85,10 @@ if [[ -n "${CV_FOLD}" ]]; then
   [[ -z "${MAX_CASES}" ]] || { echo "CV_FOLD cannot be combined with MAX_CASES" >&2; exit 2; }
   [[ "${CV_FOLD}" =~ ^[0-3]$ ]] || { echo "CV_FOLD must be 0, 1, 2, or 3" >&2; exit 2; }
   evaluation_args+=(--cv-fold "${CV_FOLD}")
+fi
+if [[ -n "${RESUME_CHECKPOINT}" ]]; then
+  test -r "${RESUME_CHECKPOINT}"
+  evaluation_args+=(--resume-checkpoint "${RESUME_CHECKPOINT}")
 fi
 
 "${PROJECT_PYTHON}" -m scripts.run_static_evaluation "${evaluation_args[@]}"
