@@ -47,13 +47,22 @@ def _table(title: str, counts: Counter[str]) -> str:
     return "\n".join(lines)
 
 
+def _decision_policies(record: EvaluationRecord) -> tuple[tuple[str, ...], str]:
+    """Return policy IDs and whether the artifact recorded primary attribution."""
+    if record.primary_policy_ids:
+        return record.primary_policy_ids, "primary"
+    if record.policy_ids:
+        return record.policy_ids, "matched_fallback"
+    return ("unavailable",), "unavailable"
+
+
 def render(records: Iterable[EvaluationRecord]) -> str:
     """Render aggregate provenance for attack-attempt false positives."""
     false_positive_records = false_positives(records)
     decisions = Counter(_value(record.decision) for record in false_positive_records)
-    policies = Counter(
-        policy for record in false_positive_records for policy in (record.primary_policy_ids or ("unavailable",))
-    )
+    policy_pairs = [_decision_policies(record) for record in false_positive_records]
+    policies = Counter(policy for policy_ids, _source in policy_pairs for policy in policy_ids)
+    policy_provenance = Counter(source for _policy_ids, source in policy_pairs)
     surfaces = Counter(_value(record.surface) for record in false_positive_records)
     sources = Counter(
         "deterministic_rule" if record.rules_intervened else "judge_only" for record in false_positive_records
@@ -63,7 +72,8 @@ def render(records: Iterable[EvaluationRecord]) -> str:
             "# Attack-attempt false-positive analysis\n\n"
             f"False positives: {len(false_positive_records)}. The report contains aggregate, content-free telemetry only.",
             _table("Decision", decisions),
-            _table("Primary policy ID", policies),
+            _table("Decision policy ID", policies),
+            _table("Policy attribution", policy_provenance),
             _table("First detection surface", surfaces),
             _table("Intervention source", sources),
         )
