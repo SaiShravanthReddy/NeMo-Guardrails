@@ -155,9 +155,11 @@ proposing a policy revision:
 uv run --locked python -m scripts.report_false_positives outputs/<artifact>.json
 ```
 
-The report groups only completed normal-case interventions by decision, primary
-policy ID, first detection surface, and whether a deterministic rule or the
-judge produced the intervention. It does not expose benchmark content.
+The report groups only completed normal-case interventions by decision, policy
+ID, first detection surface, and whether a deterministic rule or the judge
+produced the intervention. It reports whether each policy ID is a recorded
+primary attribution or a matched-policy fallback for older artifacts. It does
+not expose benchmark content.
 
 ### Slices, uncertainty, and comparisons
 

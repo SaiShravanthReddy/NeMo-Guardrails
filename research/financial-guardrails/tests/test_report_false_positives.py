@@ -54,3 +54,13 @@ def test_render_groups_by_primary_policy_and_source():
     assert "| INJ-01 | 1 |" in report
     assert "| deterministic_rule | 1 |" in report
     assert "| judge_only | 1 |" in report
+
+
+def test_render_falls_back_to_recorded_matched_policy_ids():
+    record = _record(label=0, prediction=True, rule=True)
+    record.policy_ids = ("TOOL-CONFIRM",)
+
+    report = render((record,))
+
+    assert "| TOOL-CONFIRM | 1 |" in report
+    assert "| matched_fallback | 1 |" in report
