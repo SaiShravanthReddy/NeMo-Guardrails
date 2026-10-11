@@ -148,6 +148,17 @@ uv run --locked python -m scripts.report_cross_validation outputs/<cv-fold-0>.js
 The command rejects duplicate case IDs, missing folds, configuration mismatches,
 and any artifact containing final-split cases.
 
+Inspect aggregate, content-free attack-attempt false-positive provenance before
+proposing a policy revision:
+
+```bash
+uv run --locked python -m scripts.report_false_positives outputs/<artifact>.json
+```
+
+The report groups only completed normal-case interventions by decision, primary
+policy ID, first detection surface, and whether a deterministic rule or the
+judge produced the intervention. It does not expose benchmark content.
+
 ### Slices, uncertainty, and comparisons
 
 - The full metric bundle can be recomputed for any recorded slice, such as risk
