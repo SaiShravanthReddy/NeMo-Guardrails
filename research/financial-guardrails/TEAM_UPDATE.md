@@ -83,6 +83,8 @@ selected local-Qwen cascade configuration is strong on CNFinBench attack
 attempts but intervenes on every FinVault final case, including every normal
 case. This is reported as a real operational limitation, not hidden by F1.
 
-The remaining planned analysis is source-group-disjoint four-fold cross-
-validation on the non-final 80%. It is a robustness analysis only and cannot
-change the frozen final result.
+Four-fold source-group-disjoint cross-validation over the non-final 80% is also
+complete. It confirms that CNFinBench attack-attempt screening is stable (mean
+F1 86.8%, mean FPR 10.5%), while FinVault remains too disruptive for deployment
+(mean FPR 93.6%). This robustness analysis did not change the frozen final
+result.
