@@ -49,11 +49,32 @@ from nemoguardrails.server.experimental._http_kernel import (
     HttpOperationFailed,
     HttpRouteRejected,
     HttpRouteRejectionKind,
+    _has_identity_encoding,
+    _has_media_type,
     _render_response,
     _request_path,
     create_http_proxy_router,
 )
 from nemoguardrails.server.experimental.provider.types import GuardedMessage
+
+
+@pytest.mark.parametrize(
+    ("values", "accepted"),
+    [
+        ((), False),
+        ((b"",), False),
+        ((b"text/plain",), False),
+        ((b"application/json",), True),
+        ((b"Application/JSON; charset=utf-8",), True),
+        ((b"application/json, application/json",), False),
+        ((b"application/json", b"application/json"), False),
+        ((b"application/json", b"text/plain"), False),
+        ((b"text/plain", b"application/json"), False),
+    ],
+)
+def test_media_type_requires_one_unambiguous_header(values, accepted):
+    headers = tuple((b"Content-Type", value) for value in values)
+    assert _has_media_type(headers, b"application/json") is accepted
 
 
 class StaticChecker:
@@ -1473,3 +1494,26 @@ def test_guarded_operation_requires_both_request_adapters(guarded_operation, ada
             operation=guarded_operation.operation,
             **{adapter: lambda request: request},
         )
+
+
+@pytest.mark.parametrize(
+    ("values", "identity"),
+    [
+        ((), True),
+        ((b"",), True),
+        ((b"identity",), True),
+        ((b" IDENTITY ",), True),
+        ((b"identity, ,identity",), True),
+        ((b"identity", b""), True),
+        ((b"gzip",), False),
+        ((b"gzip, identity",), False),
+        ((b"identity, gzip",), False),
+        ((b"identity", b"gzip"), False),
+        ((b"gzip", b"identity"), False),
+        ((b"br", b""), False),
+    ],
+)
+def test_identity_encoding_combines_duplicate_headers_and_comma_lists(values, identity):
+    """Any non-identity coding in any Content-Encoding header marks the body encoded."""
+    headers = ((b"content-type", b"application/json"), *((b"Content-Encoding", value) for value in values))
+    assert _has_identity_encoding(headers) is identity

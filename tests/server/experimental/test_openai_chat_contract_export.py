@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Check that the buffered contract stays derived from the runtime endpoint."""
+"""Check that the operation contract stays derived from the runtime endpoint."""
 
 import json
 import subprocess
@@ -32,19 +32,19 @@ from nemoguardrails.server.experimental.providers.openai.chat_completions.endpoi
 
 ROOT = Path(__file__).parents[3]
 CONTRACTS = ROOT / "nemoguardrails/server/experimental/contracts"
-EXPORTED = CONTRACTS / "openai/_generated/chat-completions.buffered.guard.yaml"
+EXPORTED = CONTRACTS / "openai/_generated/chat-completions.guard.yaml"
 MODULE = "nemoguardrails.server.experimental.provider.contract_export"
 ENDPOINT = "nemoguardrails.server.experimental.providers.openai.chat_completions.endpoint:CHAT_COMPLETIONS_ENDPOINT"
 CLI = [sys.executable, "-m", MODULE, ENDPOINT]
 
 
-def test_buffered_export_matches_checked_in_artifact_and_format():
+def test_operation_export_matches_checked_in_artifact_and_format():
     contract = export_guard_contract(CHAT_COMPLETIONS_ENDPOINT)
     assert contract == yaml.safe_load(EXPORTED.read_text(encoding="utf-8"))
     schema = json.loads((CONTRACTS / "guard-contract.schema.json").read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(contract)
     assert contract["version"] == CONTRACT_VERSION == "1.0.0-alpha.1"
-    assert "stream" not in contract
+    assert "stream" in contract
     assert "stream_hooks" not in contract["integration"]["endpoint"]
 
 
@@ -67,6 +67,21 @@ def test_export_uses_the_runtime_endpoint_metadata():
     assert (
         exported["request"][EXTENSION]["stream_selector_field"] == endpoint.guarded_request_model.stream_selector_field
     )
+
+
+@pytest.mark.parametrize("value", [True, False, None, 0, 1, "true", "false", [], {}])
+def test_stream_selector_export_matches_runtime(value):
+    """The published selector permits null but does not coerce other values."""
+    payload = {"messages": [{"role": "user", "content": "question"}], "stream": value}
+    validator = Draft202012Validator(export_guard_contract(CHAT_COMPLETIONS_ENDPOINT)["request"])
+    model = CHAT_COMPLETIONS_ENDPOINT.guarded_request_model
+    if value is None or type(value) is bool:
+        validator.validate(payload)
+        assert model.validate_payload(payload).streams_response is (value is True)
+    else:
+        assert not validator.is_valid(payload)
+        with pytest.raises(ValidationError):
+            model.validate_payload(payload)
 
 
 def test_export_does_not_read_files(monkeypatch):

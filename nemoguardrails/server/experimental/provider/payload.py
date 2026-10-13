@@ -199,8 +199,8 @@ class GuardedMessageTarget:
         """Return whether the target holds text for content checks.
 
         A validated projection reaches an empty or null target only when its
-        location allows empty text. The projection has then shown that no
-        other reviewed field carries content, so there is nothing to inspect.
+        location allows empty text. The projection has then rejected generated
+        content in other reviewed fields; opaque metadata is not inspected.
         """
         content = self._object.get(self._member)
         return isinstance(content, str) and content != ""
@@ -388,7 +388,11 @@ class GuardedRequestModel(GuardedPayloadModel):
 
     @property
     def streams_response(self) -> bool:
-        """Return the provider response mode selected by this request."""
+        """Read the validated selector; a permitted null selects buffered output.
+
+        Missing fields use their model default. The field declaration determines
+        whether null is accepted; the binding does not make a field nullable.
+        """
         if self.stream_selector_field is None:
             raise TypeError("The guarded request model does not declare a stream selector field.")
         return bool(getattr(self, self.stream_selector_field))
