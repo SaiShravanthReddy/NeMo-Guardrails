@@ -32,7 +32,7 @@ from nemoguardrails.server.experimental._content_checker import (
     ContentInspectionPolicy,
 )
 from nemoguardrails.server.experimental._guarded_operation import UnsupportedGuardedPayload
-from nemoguardrails.server.experimental._guarded_proxy import create_buffered_guarded_http_operation
+from nemoguardrails.server.experimental._guarded_proxy import create_guarded_http_operation
 from nemoguardrails.server.experimental._http_kernel import (
     BufferedHttpRequest,
     BufferedHttpResponse,
@@ -92,6 +92,11 @@ def _response_body():
     return b'{ "id" : "chatcmpl-example", "choices" : [ { "index" : 0, "message" : { "role" : "assistant", "content" : "answer" } } ], "usage" : { "total_tokens" : 2 } }'
 
 
+def _guarded_operation(endpoint, errors):
+    """Build the guarded operation with default stream limits."""
+    return create_guarded_http_operation(endpoint, errors, max_stream_event_bytes=1024, max_pending_stream_bytes=1024)
+
+
 def _json_headers(*headers):
     """Return JSON content headers with optional provider metadata."""
     return ((b"content-type", b"application/json"), *headers)
@@ -118,7 +123,7 @@ def test_buffered_request_preparation_preserves_the_complete_provider_request():
         headers=_json_headers((b"x-provider-opaque", b"first"), (b"x-provider-opaque", b"second")),
         body=_request_body(),
     )
-    operation = create_buffered_guarded_http_operation(CHAT_COMPLETIONS_ENDPOINT, OPENAI_ERROR_MAPPING)
+    operation = _guarded_operation(CHAT_COMPLETIONS_ENDPOINT, OPENAI_ERROR_MAPPING)
 
     prepared = operation.prepare_request(request)
 
@@ -498,6 +503,12 @@ async def test_replacement_remains_explicitly_unsupported(checker, status_code, 
             415,
             "unsupported_content_encoding",
         ),
+        (
+            _request_body(),
+            [("content-type", "application/json"), ("content-encoding", "gzip"), ("content-encoding", "identity")],
+            415,
+            "unsupported_content_encoding",
+        ),
     ],
 )
 async def test_request_representation_failures_are_native_and_stop_before_dispatch(
@@ -546,14 +557,51 @@ def test_openai_error_preserves_provider_binding_failure_code():
         ("request", b'{"messages":[],"stream":true}', _json_headers(), 422, "example_request_shape"),
         ("request", b'{"private-payload":', _json_headers(), 400, "invalid_json"),
         ("request", _request_body(), ((b"content-type", b"text/plain"),), 415, "unsupported_media_type"),
+        (
+            "request",
+            _request_body(),
+            _json_headers((b"Content-Type", b"application/json")),
+            415,
+            "unsupported_media_type",
+        ),
+        ("request", _request_body(), _json_headers((b"Content-Type", b"text/plain")), 415, "unsupported_media_type"),
+        (
+            "request",
+            _request_body(),
+            ((b"Content-Type", b"text/plain"), *_json_headers()),
+            415,
+            "unsupported_media_type",
+        ),
         ("response", b'{"choices":[]}', _json_headers(), 502, "example_response_shape"),
         ("response", b'["private-payload"]', _json_headers(), 502, "example_response_shape"),
         ("response", b'{"private-payload":', _json_headers(), 502, "example_response_shape"),
         ("response", b"private-payload", ((b"content-type", b"text/plain"),), 502, "example_response_shape"),
         (
             "response",
+            _response_body(),
+            _json_headers((b"Content-Type", b"application/json")),
+            502,
+            "example_response_shape",
+        ),
+        ("response", _response_body(), _json_headers((b"Content-Type", b"text/plain")), 502, "example_response_shape"),
+        (
+            "response",
+            _response_body(),
+            ((b"Content-Type", b"text/plain"), *_json_headers()),
+            502,
+            "example_response_shape",
+        ),
+        (
+            "response",
             b"private-payload",
             _json_headers((b"content-encoding", b"gzip")),
+            502,
+            "example_response_shape",
+        ),
+        (
+            "response",
+            _response_body(),
+            _json_headers((b"content-encoding", b"gzip"), (b"content-encoding", b"identity")),
             502,
             "example_response_shape",
         ),
@@ -577,7 +625,7 @@ async def test_endpoint_error_codes_control_guarded_http_failures(stage, body, h
     app = FastAPI()
     app.include_router(
         create_http_proxy_router(
-            operations=(create_buffered_guarded_http_operation(endpoint, OPENAI_ERROR_MAPPING),),
+            operations=(_guarded_operation(endpoint, OPENAI_ERROR_MAPPING),),
             checker=checker,
             dispatch=dispatch,
             render_outcome=OPENAI_ERROR_MAPPING.renderer,
@@ -733,7 +781,7 @@ def _revision_bound_operation():
         transport_name="provider-version",
     )
     endpoint = replace(CHAT_COMPLETIONS_ENDPOINT, api_revision=revision)
-    return create_buffered_guarded_http_operation(endpoint, OPENAI_ERROR_MAPPING)
+    return _guarded_operation(endpoint, OPENAI_ERROR_MAPPING)
 
 
 def _chat_request(*headers):
@@ -777,3 +825,17 @@ def test_http_failures_render_as_openai_errors(kind, status_code, error_type):
     assert body["error"]["type"] == error_type
     assert body["error"]["code"] == kind.value
     assert "internal detail" not in response.body.decode()
+
+
+def test_stream_dispatch_requires_an_endpoint_stream_binding():
+    async def stream_dispatch(_request):
+        raise AssertionError("must not dispatch")
+
+    with pytest.raises(ValueError, match="requires an endpoint stream binding"):
+        create_guarded_http_operation(
+            replace(CHAT_COMPLETIONS_ENDPOINT, stream=None),
+            OPENAI_ERROR_MAPPING,
+            stream_dispatch=stream_dispatch,
+            max_stream_event_bytes=1024,
+            max_pending_stream_bytes=1024,
+        )

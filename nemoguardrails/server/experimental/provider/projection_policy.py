@@ -182,18 +182,19 @@ def field_policy(field: FieldInfo) -> dict[str, Any]:
     return cast(dict[str, Any], metadata) if isinstance(metadata, dict) else {}
 
 
-# Pydantic constraints whose exported keywords (minLength/minItems,
-# maxLength/maxItems, pattern) exist in the guard contract field vocabulary.
-_EXPORTABLE_CONSTRAINTS = frozenset({"min_length", "max_length", "pattern"})
+# Runtime constraints that declarations may use. Export separately rejects any
+# schema keyword the guard contract cannot carry. JSON Schema has no keyword for
+# Python strictness, so `strict` is enforced at runtime only.
+_FIELD_CONSTRAINTS = frozenset({"min_length", "max_length", "pattern", "ge", "le", "strict"})
 
 
 def _field(metadata: dict[str, Any], constraints: dict[str, Any]) -> Any:
     """Build Annotated field metadata while keeping defaults in assignments."""
     if {"default", "default_factory", "alias"} & constraints.keys():
         raise ValueError("Declare defaults explicitly on the field; aliases are not supported")
-    unsupported = constraints.keys() - _EXPORTABLE_CONSTRAINTS
+    unsupported = constraints.keys() - _FIELD_CONSTRAINTS
     if unsupported:
-        raise ValueError(f"Constraints not expressible in the guard contract: {sorted(unsupported)}")
+        raise ValueError(f"Unsupported Pydantic constraints: {sorted(unsupported)}")
     return Field(json_schema_extra={EXTENSION: metadata}, **constraints)
 
 
@@ -213,8 +214,9 @@ def guarded(
             binding defaults to read-only when this is not declared.
         blocked_by: Sibling field whose non-empty value prevents replacement.
         replacement_reason: Structured reason for the replacement restriction.
-        **constraints: min_length, max_length, or pattern; other Pydantic
-            constraints have no guard contract keyword and are rejected.
+        **constraints: min_length, max_length, pattern, ge, le, or strict.
+            Format support is checked separately when exporting a complete
+            guard contract; strictness has no JSON Schema keyword.
 
     Use inside Annotated and put defaults on the field assignment. Declaring
     replacement eligibility does not enable runtime replacement support.
@@ -431,6 +433,36 @@ def export_payload_schema(model: type[PolicyModel], *, projection_id: str) -> di
 
     def expand(node: dict[str, Any]) -> dict[str, Any]:
         """Normalize the inline schema to the narrower contract vocabulary."""
+        supported = {
+            "title",
+            "description",
+            "$comment",
+            "examples",
+            "deprecated",
+            "readOnly",
+            "writeOnly",
+            "type",
+            "const",
+            "default",
+            "enum",
+            "minItems",
+            "maxItems",
+            "minLength",
+            "maxLength",
+            "pattern",
+            "minimum",
+            "maximum",
+            "properties",
+            "required",
+            "additionalProperties",
+            "items",
+            "anyOf",
+            "oneOf",
+            EXTENSION,
+        }
+        unsupported = {key for key in node if key not in supported and not key.startswith("x-")}
+        if unsupported:
+            raise ValueError(f"Schema keywords not expressible in the guard contract: {sorted(unsupported)}")
         result = dict(node)
         metadata = dict(result.get(EXTENSION, {}))
         if "properties" in result:
@@ -460,6 +492,21 @@ def export_payload_schema(model: type[PolicyModel], *, projection_id: str) -> di
     exported["title"] = projection_id
     exported.setdefault(EXTENSION, {})["model"] = model.__name__
     return exported
+
+
+def replacement_blocker(model: type[PolicyModel], subject: dict[str, Any]) -> str | None:
+    """Return a subject's replacement blocker after checking it names a reviewed sibling.
+
+    A misspelled blocker would never match a provider member and would silently
+    allow replacement, so buffered and stream subjects both validate it.
+
+    Raises:
+        ValueError: The blocker is not a declared or reviewed opaque field of the model.
+    """
+    blocker = subject.get("replacement_blocked_by")
+    if blocker is not None and blocker not in set(model.model_fields) | set(model.policy.opaque):
+        raise ValueError(f"Replacement blocker {blocker!r} is not a field of the subject's object")
+    return blocker
 
 
 def text_location(model: type[PolicyModel]) -> GuardedTextLocation:
@@ -508,7 +555,6 @@ def text_location(model: type[PolicyModel]) -> GuardedTextLocation:
         """Collect subjects from the model objects that own their policies."""
         if current in active:
             raise ValueError("Recursive guarded text paths are not supported")
-        reviewed = set(current.model_fields) | set(current.policy.opaque)
         for name, field in current.model_fields.items():
             policy = field_policy(field)
             if policy.get("classification") != "guarded":
@@ -528,9 +574,7 @@ def text_location(model: type[PolicyModel]) -> GuardedTextLocation:
             )
             if annotation is not str and not literal_text:
                 raise ValueError("A guarded subject must be a named string field")
-            blocker = subject.get("replacement_blocked_by")
-            if blocker is not None and blocker not in reviewed:
-                raise ValueError(f"Replacement blocker {blocker!r} is not a field of the subject's object")
+            blocker = replacement_blocker(current, subject)
             locations.append(
                 GuardedTextLocation(
                     role=subject["role"],
