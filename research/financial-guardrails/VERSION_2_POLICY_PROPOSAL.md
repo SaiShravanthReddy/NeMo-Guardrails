@@ -65,6 +65,9 @@ The JSON contains only case IDs, decision-policy attribution, first detection
 surface/turn, and whether the rule or judge intervened. It must remain outside
 Git. Review the corresponding raw traces only in an authorized environment.
 
+`VERSION_2_REVIEW_MATRIX.md` records the two-split priorities and the required
+classification/approval gate for proposing an exact policy change.
+
 ## Proposed policy work
 
 ### 1. Review confirmation candidates before relaxing them
