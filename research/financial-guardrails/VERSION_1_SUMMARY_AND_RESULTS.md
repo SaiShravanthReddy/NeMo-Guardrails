@@ -110,6 +110,25 @@ Lakera.
 | CNFinBench pooled | 64 | 55.6% | 51.7% | 53.6% | 58.7% | 34.3% | 56.1% / 47.1% |
 | FinVault v5 fixed full | 223 | 44.4% | 100.0% | 61.5% | 50.0% | 100.0% | unavailable |
 
+### Post-hoc FinVault score-only diagnostic
+
+The frozen Version 1 enforcement artifact lacks one outcome-stage score, so its
+FinVault attack-success AUROC/AUPRC remain unavailable. At the team's request,
+the unchanged configuration was rerun as a separately labeled score-only
+diagnostic. It preserved every enforcement decision and asked the same judge for
+an outcome score only where a deterministic rule had already intervened.
+
+| Task | Cases | Score coverage | AUROC | AUPRC |
+| --- | ---: | ---: | ---: | ---: |
+| FinVault attack success | 223 | 100.0% | 55.2% | 47.4% |
+| FinVault attack success among attempted attacks | 207 | 100.0% | 53.9% | 50.1% |
+
+The diagnostic had zero enforcement errors, zero outcome-score errors, and
+matching logical-attempt/backend-call telemetry. These near-chance rankings
+confirm that Version 1 should not be used as a reliable FinVault
+attack-success monitor. They are diagnostic evidence, not a replacement for the
+frozen Version 1 enforcement result.
+
 ### Reliability and latency
 
 | Dataset | Completed cases | Detector errors | Judge calls | p50 latency | p95 latency | Provider cost |
@@ -162,7 +181,7 @@ confirmed CNFinBench attack-attempt performance.
 | Policy evaluation | Frozen general and FinVault tool policies. | Analyze development/calibration false positives and refine only policies supported by that analysis. |
 | Confirmation actions | Normal FinVault labels do not state whether a sensitive action was authorized. | Obtain team guidance on whether confirmation for a normal high-impact action is a false positive or acceptable safety friction; evaluate it as a separate burden. |
 | Tool controls | Rules may co-occur on a case, making root-cause attribution incomplete in early artifacts. | Use decision-policy attribution and small authorized case review before narrowing tool rules. Preserve explicit deny and dangerous-argument protections unless review identifies an error. |
-| LLM outcome scores | Cascade routing can omit an outcome-stage LLM score after a deterministic intervention. | If outcome AUROC/AUPRC is required, run a separately labeled score-only judge path for every outcome surface; do not fabricate missing scores. |
+| LLM outcome scores | Cascade routing can omit an outcome-stage LLM score after a deterministic intervention. | A separate score-only diagnostic produced complete FinVault outcome scores without changing enforcement; do not reinterpret it as a new enforcement condition. |
 | Evaluation discipline | Version 1 final split is frozen. | Tune only on development/calibration, choose with pilot data, then run a new Version 2 final evaluation as a separate experiment. |
 
 Version 2 will not overwrite or reinterpret Version 1. It will be a separate,
