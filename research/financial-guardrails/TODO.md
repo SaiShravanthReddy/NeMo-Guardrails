@@ -173,3 +173,19 @@ checks. Dataset adapters are implemented; live HiPerGator model execution remain
   cost, latency, and limitations. See `PRIMARY_FINAL_EVALUATION_REPORT.md`.
 - [x] Update `TEAM_UPDATE.md` and the final report using only validated results;
   all scores are labeled as Open Lakera/NeMo results.
+
+## 4. Version 2 policy-only refinement
+
+Status: analysis and proposal started on 2026-10-15. Model, judge prompt,
+routing, generation settings, labels, and Version 1 results remain frozen.
+
+- [x] Record the Version 2 scope confirmed by the team.
+- [x] Analyze content-free FinVault development/calibration false-positive
+  telemetry and document the Version 2 proposal.
+- [ ] Review an authorized sample of FinVault false positives and identify exact
+  policy changes. Dependency: authorized sample access and team review of the
+  proposal.
+- [ ] Obtain approval for exact Version 2 policy edits.
+- [ ] Implement approved policy changes with regression tests.
+- [ ] Evaluate Version 2 on development, calibration, pilot, and a separate
+  final split; compare against frozen Version 1 results.
