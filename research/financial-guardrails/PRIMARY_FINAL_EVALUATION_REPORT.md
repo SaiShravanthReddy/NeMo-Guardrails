@@ -21,6 +21,11 @@ The final artifacts are stored outside Git on HiPerGator:
 - `outputs/finvault-v5-fixed-full-final-hipergator-rules_first_cascade-b9896cd5bb58.json`
 - `outputs/cnfinbench-pooled-final-hipergator-rules_first_cascade-bdbf909d6a7b.json`
 
+The separately labeled, post-hoc FinVault score-only diagnostic artifact is also
+stored outside Git:
+
+- `outputs/finvault-v5-fixed-full-final-hipergator-rules_first_cascade-7b1668964890.json`
+
 Both completed every assigned case, had zero detector errors, retained complete
 attack-attempt risk-score coverage, and had exact logical-judge-attempt/backend-
 call telemetry matches.
@@ -48,6 +53,24 @@ misleading for FinVault because attack attempts are prevalent in that split.
 For FinVault attempted attacks only, attack-success F1 is 64.7%, with a 100%
 FPR. Its ranking metrics are unavailable because outcome-stage score coverage
 is not complete; they are intentionally not estimated from a smaller subset.
+
+### Separate score-only outcome diagnostic
+
+After the primary final result was frozen, the team requested complete FinVault
+attack-success ranking metrics. The selected configuration was rerun with a
+separate score-only outcome path: its normal enforcement decisions were retained,
+and the unchanged judge was called only to collect an outcome risk score where a
+deterministic rule had already stopped the event. This diagnostic does not replace
+or alter the primary final result.
+
+| Task | Cases | Score coverage | AUROC | AUPRC | Detector / score errors |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FinVault attack success | 223 | 100.0% | 55.2% | 47.4% | 0 / 0 |
+| FinVault attack success among attempted attacks | 207 | 100.0% | 53.9% | 50.1% | 0 / 0 |
+
+The diagnostic's near-chance ranking confirms the primary interpretation:
+Version 1 does not reliably distinguish FinVault traces with a successful attack
+outcome from traces without one.
 
 ## Operational results
 
