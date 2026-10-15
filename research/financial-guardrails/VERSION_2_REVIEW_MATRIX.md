@@ -55,6 +55,15 @@ uv run --locked python -m scripts.manage_false_positive_review validate \
   outputs/<private-review-worksheet>.json
 ```
 
+For an authorized interactive review on HiPerGator, the private viewer displays
+one source trace at a time and writes only the fixed classification values back
+to the worksheet. It does not persist trace content:
+
+```bash
+uv run --locked python -m scripts.review_false_positive_traces \
+  outputs/<private-review-worksheet>.json
+```
+
 ## Decision gate
 
 Before editing a Version 2 policy, record the exact policy/tool/argument,
