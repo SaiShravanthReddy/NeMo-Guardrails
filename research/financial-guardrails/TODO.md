@@ -182,6 +182,9 @@ routing, generation settings, labels, and Version 1 results remain frozen.
 - [x] Record the Version 2 scope confirmed by the team.
 - [x] Analyze content-free FinVault development/calibration false-positive
   telemetry and document the Version 2 proposal.
+- [x] Export content-free development and calibration candidate lists and record
+  the review matrix. The lists remain outside Git; no raw benchmark content was
+  written to the repository.
 - [ ] Review an authorized sample of FinVault false positives and identify exact
   policy changes. Dependency: authorized sample access and team review of the
   proposal.
