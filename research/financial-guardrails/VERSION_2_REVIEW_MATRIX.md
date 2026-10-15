@@ -35,6 +35,26 @@ Only outcome 1 can justify a Version 2 relaxation. Outcomes 2–4 remain an
 intervention for evaluation and must not be converted to `allow` to improve a
 benchmark score.
 
+## Content-free worksheet workflow
+
+Prepare a private worksheet from either candidate list:
+
+```bash
+uv run --locked python -m scripts.manage_false_positive_review prepare \
+  outputs/<private-review-candidates>.json \
+  --output outputs/<private-review-worksheet>.json
+```
+
+An authorized reviewer classifies each row using only the four outcomes above
+and one fixed basis code. The worksheet deliberately has no free-text field, so
+raw FinVault content cannot be entered accidentally. Validate the completed
+worksheet before drafting a change list:
+
+```bash
+uv run --locked python -m scripts.manage_false_positive_review validate \
+  outputs/<private-review-worksheet>.json
+```
+
 ## Decision gate
 
 Before editing a Version 2 policy, record the exact policy/tool/argument,
