@@ -46,6 +46,17 @@ def test_cross_validation_fold_rejects_out_of_range(monkeypatch: pytest.MonkeyPa
         run_static_evaluation.main()
 
 
+def test_outcome_score_all_events_requires_rules_first_cascade(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_static_evaluation", "finvault-v5-fixed-full", "--judge-mode", "all_events", "--outcome-score-all-events"],
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        run_static_evaluation.main()
+
+
 def test_case_id_file_rejects_duplicates(tmp_path):
     path = tmp_path / "cases.txt"
     path.write_text("one\none\n", encoding="utf-8")

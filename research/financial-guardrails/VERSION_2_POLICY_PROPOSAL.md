@@ -103,9 +103,10 @@ matched policies and prevents changes based on co-occurrence alone.
   1 artifacts.
 - Hard blocks for explicit bypass/override arguments without documented review.
 
-Outcome-stage score-only judging is not included in Version 2. It is an
-optional, separately labeled diagnostic if complete FinVault attack-success
-AUROC/AUPRC is later required.
+Outcome-stage score-only judging is not included in Version 2. The team requested
+it as a separately labeled diagnostic for complete FinVault attack-success
+AUROC/AUPRC; it retains Version 1 enforcement decisions and does not alter a
+policy, model, prompt, routing mode, or Version 2 selection.
 
 ## Validation and decision gates
 

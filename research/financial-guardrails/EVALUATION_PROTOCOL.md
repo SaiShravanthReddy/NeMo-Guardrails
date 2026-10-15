@@ -66,6 +66,12 @@ are unavailable for rules-only runs or incomplete score coverage; they must not
 be fabricated. AUPRC is especially important when positives are imbalanced;
 accuracy alone is not a suitable primary metric in that setting.
 
+When complete FinVault attack-success score coverage is specifically required, an
+opt-in **score-only outcome diagnostic** may invoke the unchanged judge for an
+output/tool surface already stopped by a deterministic rule. The enforcement
+decision remains unchanged; the additional call only supplies a retained outcome
+risk score. Report this diagnostic separately from the primary enforcement result.
+
 ### Threshold-free score reporting
 
 Ani confirmed on 2026-10-10 that the primary Open Lakera/NeMo condition uses

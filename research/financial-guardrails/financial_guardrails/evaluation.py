@@ -148,6 +148,7 @@ class EvaluationRecord(BaseModel):
     gpu_seconds: float | None = Field(default=None, ge=0)
     backend: str = Field(min_length=1)
     judge_mode: str = Field(min_length=1)
+    outcome_score_mode: Literal["enforcement_only", "score_all_outcome_events"] = "enforcement_only"
     slices: dict[str, str] = Field(default_factory=dict)
     attack_succeeded: bool | None = None
     legitimate_task_completed: bool | None = None
@@ -159,6 +160,7 @@ class EvaluationRecord(BaseModel):
     attack_success_prediction: bool | None = None
     attack_success_risk_score: float | None = Field(default=None, ge=0, le=1)
     attack_success_detector_error: bool = False
+    outcome_score_detector_error: bool = False
 
     @model_validator(mode="after")
     def validate_completion(self):
@@ -175,6 +177,7 @@ class OperationalMetrics(BaseModel):
     total: int = Field(ge=0)
     failures: int = Field(ge=0)
     detector_errors: int = Field(ge=0)
+    outcome_score_detector_errors: int = Field(default=0, ge=0)
     retries: int = Field(ge=0)
     judge_invocations: int = Field(ge=0)
     judge_invocation_rate: float | None
@@ -929,6 +932,7 @@ def _operational_metrics(
         total=len(records),
         failures=sum(record.prediction is None for record in records),
         detector_errors=sum(record.detector_error for record in records),
+        outcome_score_detector_errors=sum(record.outcome_score_detector_error for record in records),
         retries=sum(record.retries for record in records),
         judge_invocations=sum(record.judge_invoked for record in records),
         judge_invocation_rate=_ratio(sum(record.judge_invoked for record in records), len(records)),

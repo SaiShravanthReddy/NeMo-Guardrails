@@ -19,6 +19,7 @@ MAX_CASES="${MAX_CASES:-}"
 CASE_ID_FILE="${CASE_ID_FILE:-}"
 CV_FOLD="${CV_FOLD:-}"
 RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
+OUTCOME_SCORE_ALL_EVENTS="${OUTCOME_SCORE_ALL_EVENTS:-0}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 VLLM_BIN="${PROJECT_ROOT}/.venv-vllm/bin/vllm"
 NINJA_BIN="${PROJECT_ROOT}/.venv-vllm/bin/ninja"
@@ -89,6 +90,13 @@ fi
 if [[ -n "${RESUME_CHECKPOINT}" ]]; then
   test -r "${RESUME_CHECKPOINT}"
   evaluation_args+=(--resume-checkpoint "${RESUME_CHECKPOINT}")
+fi
+if [[ "${OUTCOME_SCORE_ALL_EVENTS}" == "1" ]]; then
+  [[ "${JUDGE_MODE}" == "rules_first_cascade" ]] || { echo "OUTCOME_SCORE_ALL_EVENTS requires rules_first_cascade" >&2; exit 2; }
+  evaluation_args+=(--outcome-score-all-events)
+elif [[ "${OUTCOME_SCORE_ALL_EVENTS}" != "0" ]]; then
+  echo "OUTCOME_SCORE_ALL_EVENTS must be 0 or 1" >&2
+  exit 2
 fi
 
 "${PROJECT_PYTHON}" -m scripts.run_static_evaluation "${evaluation_args[@]}"

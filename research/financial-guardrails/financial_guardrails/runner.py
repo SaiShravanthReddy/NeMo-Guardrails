@@ -43,11 +43,16 @@ def evaluate_cases(
     *,
     judge_mode: str,
     backend_name: str = "rules_only",
+    outcome_score_mode: str = "enforcement_only",
     checkpoint_path: str | Path | None = None,
     progress_sink: Callable[[int, int], None] | None = None,
 ) -> tuple[EvaluationRecord, ...]:
     if judge_mode not in {"rules_only", "all_events", "rules_first_cascade"}:
         raise ValueError("unsupported judge mode")
+    if outcome_score_mode not in {"enforcement_only", "score_all_outcome_events"}:
+        raise ValueError("unsupported outcome score mode")
+    if outcome_score_mode == "score_all_outcome_events" and judge_mode != "rules_first_cascade":
+        raise ValueError("score-all-outcome-events requires rules_first_cascade mode")
     selected_cases = tuple(cases)
     metrics: list[BackendCallMetrics] = []
     dataset_keys = {case.dataset_key for case in selected_cases}
@@ -75,7 +80,10 @@ def evaluate_cases(
     if not set(existing).issubset(expected_ids):
         raise ValueError("checkpoint contains cases outside this evaluation")
     if any(
-        record.dataset_key != case.dataset_key or record.backend != backend_name or record.judge_mode != judge_mode
+        record.dataset_key != case.dataset_key
+        or record.backend != backend_name
+        or record.judge_mode != judge_mode
+        or record.outcome_score_mode != outcome_score_mode
         for case in selected_cases
         for record in ([existing[case.case_id]] if case.case_id in existing else [])
     ):
@@ -92,6 +100,7 @@ def evaluate_cases(
         completion_start = judge_detector.completion_attempts if judge_detector else 0
         repair_start = judge_detector.repair_attempts if judge_detector else 0
         verdicts: list[tuple[int, Surface, Verdict, bool]] = []
+        outcome_score_verdicts: list[Verdict] = []
         for message in case.messages:
             event = event_from_message(case, message)
             rules_verdict = rules_engine.evaluate(event, mode=Mode.ENFORCE)
@@ -101,12 +110,19 @@ def evaluate_cases(
             else:
                 verdict = full_engine.evaluate(event, mode=Mode.ENFORCE)
             verdicts.append((message.turn_index, event.surface, verdict, rules_intervened))
+            if event.surface in OUTCOME_SURFACES:
+                if outcome_score_mode == "score_all_outcome_events" and rules_intervened:
+                    outcome_score_verdicts.append(full_engine.evaluate(event, mode=Mode.ENFORCE))
+                else:
+                    outcome_score_verdicts.append(verdict)
         record = _case_record(
             case,
             verdicts,
             metrics[metric_start:],
+            outcome_score_verdicts=outcome_score_verdicts,
             backend=backend_name,
             judge_mode=judge_mode,
+            outcome_score_mode=outcome_score_mode,
             latency_seconds=time.monotonic() - started,
             judge_attempts=(judge_detector.completion_attempts - completion_start) if judge_detector else 0,
             retries=(judge_detector.repair_attempts - repair_start) if judge_detector else 0,
@@ -125,8 +141,10 @@ def _case_record(
     verdicts: list[tuple[int, Surface, Verdict, bool]],
     calls: list[BackendCallMetrics],
     *,
+    outcome_score_verdicts: list[Verdict] | None = None,
     backend: str,
     judge_mode: str,
+    outcome_score_mode: str = "enforcement_only",
     latency_seconds: float,
     retries: int,
     judge_attempts: int = 0,
@@ -136,6 +154,9 @@ def _case_record(
     interventions = [item for item in verdicts if _is_intervention(item[2].recommended_decision)]
     outcome_verdicts = [item for item in verdicts if item[1] in OUTCOME_SURFACES]
     outcome_interventions = [item for item in outcome_verdicts if _is_intervention(item[2].recommended_decision)]
+    score_verdicts = (
+        outcome_score_verdicts if outcome_score_verdicts is not None else [item[2] for item in outcome_verdicts]
+    )
     primary = max(findings, key=lambda item: PRECEDENCE[item[2].recommended_decision]) if findings else None
     first_detection = min((turn for turn, _surface, _verdict, _rules in interventions), default=None)
     dangerous_turn = min(
@@ -150,6 +171,7 @@ def _case_record(
     evaluation_metadata = case.metadata.get("evaluation", {})
     attack_succeeded = _optional_bool(evaluation_metadata.get("attack_success"))
     attack_success_detector_error = any(verdict.detector_error for _turn, _surface, verdict, _rules in outcome_verdicts)
+    outcome_score_detector_error = any(verdict.detector_error for verdict in score_verdicts)
     attack_success_prediction = (
         None
         if attack_succeeded is None or not outcome_verdicts or attack_success_detector_error
@@ -197,18 +219,17 @@ def _case_record(
         retries=retries,
         backend=backend,
         judge_mode=judge_mode,
+        outcome_score_mode=outcome_score_mode,
         slices=slices,
         attack_succeeded=attack_succeeded,
         attack_success_prediction=attack_success_prediction,
-        attack_success_risk_score=max(
-            (
-                verdict.risk_score
-                for _turn, _surface, verdict, _rules in outcome_verdicts
-                if verdict.risk_score is not None
-            ),
-            default=None,
+        attack_success_risk_score=(
+            None
+            if outcome_score_detector_error
+            else max((verdict.risk_score for verdict in score_verdicts if verdict.risk_score is not None), default=None)
         ),
         attack_success_detector_error=attack_success_detector_error,
+        outcome_score_detector_error=outcome_score_detector_error,
     )
 
 

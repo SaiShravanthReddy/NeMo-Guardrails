@@ -36,6 +36,7 @@ def _configuration_identity(artifact: EvaluationArtifact) -> tuple[object, ...]:
         manifest.model_id,
         manifest.model_revision,
         manifest.judge_mode,
+        getattr(manifest, "outcome_score_mode", "enforcement_only"),
         manifest.policy_sha256,
         manifest.judge_policy_sha256,
         manifest.benchmark_policy_sha256,

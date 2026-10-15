@@ -31,7 +31,20 @@ def main() -> None:
     artifacts = [read_evaluation_artifact(path) for path in args.artifacts]
     runs = [
         (
-            f"{artifact.manifest.dataset_key} / {artifact.manifest.backend} / {artifact.manifest.judge_mode}",
+            " / ".join(
+                part
+                for part in (
+                    artifact.manifest.dataset_key,
+                    artifact.manifest.backend,
+                    artifact.manifest.judge_mode,
+                    (
+                        "score_all_outcome_events"
+                        if artifact.manifest.outcome_score_mode == "score_all_outcome_events"
+                        else None
+                    ),
+                )
+                if part is not None
+            ),
             artifact.metrics,
         )
         for artifact in artifacts
