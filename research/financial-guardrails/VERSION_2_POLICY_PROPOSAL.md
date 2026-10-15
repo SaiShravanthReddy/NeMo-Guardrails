@@ -52,6 +52,19 @@ targets. They do not prove that confirmation is incorrect: FinVault does not
 provide trusted authorization or a later human-confirmation outcome for each
 normal-labeled case.
 
+Export the exact normal-labeled intervention candidates without benchmark
+content before an authorized trace review:
+
+```bash
+uv run --locked python -m scripts.export_false_positive_review \
+  outputs/<development-or-calibration-artifact>.json \
+  --output outputs/<private-review-candidates>.json
+```
+
+The JSON contains only case IDs, decision-policy attribution, first detection
+surface/turn, and whether the rule or judge intervened. It must remain outside
+Git. Review the corresponding raw traces only in an authorized environment.
+
 ## Proposed policy work
 
 ### 1. Review confirmation candidates before relaxing them
