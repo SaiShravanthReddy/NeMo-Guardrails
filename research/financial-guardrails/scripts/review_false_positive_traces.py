@@ -63,7 +63,6 @@ def classify(row: ReviewWorksheetRow, choice: str) -> ReviewWorksheetRow:
 
 def _render_private_trace(case_id: str, messages: Iterable[BenchmarkMessage]) -> None:
     print(f"\n=== PRIVATE FINVAULT TRACE: {case_id} ===")
-    print("Do not copy this content into Git, Slack, or the review worksheet.")
     for message in messages:
         print(f"\n[{message.original_role} / {message.kind}]")
         print(message.content)
