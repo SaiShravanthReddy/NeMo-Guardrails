@@ -60,6 +60,7 @@ class ExperimentManifest(BaseModel):
     model_id: str = Field(min_length=1)
     model_revision: str | None = None
     judge_mode: Literal["rules_only", "all_events", "rules_first_cascade"]
+    outcome_score_mode: Literal["enforcement_only", "score_all_outcome_events"] = "enforcement_only"
     positive_label: Literal[0, 1]
     decision_threshold: float | None = Field(default=None, ge=0, le=1)
     generation_settings: dict[str, JsonValue] = Field(default_factory=dict)

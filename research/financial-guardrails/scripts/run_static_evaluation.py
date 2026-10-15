@@ -56,6 +56,11 @@ def main() -> None:
     parser.add_argument("--backend", choices=("rules_only", "navigator", "hipergator"), default="rules_only")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
     parser.add_argument("--resume-checkpoint", type=Path)
+    parser.add_argument(
+        "--outcome-score-all-events",
+        action="store_true",
+        help="Collect LLM outcome scores after rule interventions without changing enforcement decisions.",
+    )
     selection_group = parser.add_mutually_exclusive_group()
     selection_group.add_argument(
         "--max-cases",
@@ -84,6 +89,8 @@ def main() -> None:
         parser.error("--cv-fold must be between 0 and 3")
     if args.cv_fold is not None and (args.max_cases is not None or args.case_id_file is not None):
         parser.error("--cv-fold cannot be combined with --max-cases or --case-id-file")
+    if args.outcome_score_all_events and args.judge_mode != "rules_first_cascade":
+        parser.error("--outcome-score-all-events requires --judge-mode rules_first_cascade")
 
     adapter = (
         cnfinbench_adapter(args.data_dir) if args.dataset == "cnfinbench-pooled" else finvault_adapter(args.data_dir)
@@ -144,6 +151,9 @@ def main() -> None:
                 "max_cases": args.max_cases,
                 "case_selection_sha256": case_selection_sha256,
                 "cv_fold": args.cv_fold,
+                "outcome_score_mode": "score_all_outcome_events"
+                if args.outcome_score_all_events
+                else "enforcement_only",
             },
             sort_keys=True,
         ).encode()
@@ -154,6 +164,7 @@ def main() -> None:
         cases,
         judge_mode=args.judge_mode,
         backend_name=args.backend,
+        outcome_score_mode="score_all_outcome_events" if args.outcome_score_all_events else "enforcement_only",
         checkpoint_path=args.resume_checkpoint or args.output_dir / f"{run_id}.checkpoint.jsonl",
         progress_sink=_MilestoneReporter(),
     )
@@ -186,6 +197,7 @@ def main() -> None:
         model_id=backend_spec.model if backend_spec else "deterministic-rules",
         model_revision=backend_spec.revision if backend_spec else None,
         judge_mode=args.judge_mode,
+        outcome_score_mode="score_all_outcome_events" if args.outcome_score_all_events else "enforcement_only",
         positive_label=1,
         generation_settings=backend_spec.request_options if backend_spec else {},
         software_versions={"python": platform.python_version()},

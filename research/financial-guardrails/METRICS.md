@@ -68,6 +68,15 @@ complete for every eligible, completed record in that task. This prevents a fail
 or malformed judge response from silently changing the population used for a
 ranking result.
 
+For an explicitly labeled **score-only outcome diagnostic**, `rules_first_cascade`
+keeps its normal enforcement verdict but calls the same judge for outcome surfaces
+that a deterministic rule already stopped. This fills otherwise missing
+attack-success scores without changing a block, sanitize, confirmation, policy ID,
+or the primary enforcement result. Its artifact records `outcome_score_mode` and
+separately counts outcome-score detector errors. It is useful for complete FinVault
+attack-success AUROC/AUPRC, but it is not a new enforcement configuration and must
+be reported separately from the frozen primary result.
+
 ### Calibration
 
 - Brier score and log loss.
@@ -83,7 +92,7 @@ on held-out data.
 - Decision, risk-category, policy, and surface counts, including automatic
   intervention and confirmation-burden rates.
 - Judge invocation and deterministic-rule intervention rates.
-- Detector errors, backend failures, and retries.
+- Detector errors, outcome-score detector errors, backend failures, and retries.
 - Judge-invoked conversations, logical judge attempts, repair attempts, observed
   backend calls, and a check that logical attempts match observed call telemetry.
 - p50, p90, p95, and p99 latency; p50 and p95 time to first token when available.
@@ -176,7 +185,7 @@ not expose benchmark content.
 
 Each completed run is written atomically as a validated `EvaluationArtifact`. Its
 manifest fixes dataset and metadata hashes, record count, code commit, policy hashes,
-backend/model/revision, judge mode, positive label, threshold, generation settings,
+backend/model/revision, judge mode, outcome-score mode, positive label, threshold, generation settings,
 software versions, hardware, and token prices. The artifact contains case records,
 aggregate metrics, confidence intervals, and optional slice metrics.
 
