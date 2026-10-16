@@ -29,7 +29,7 @@ from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.engine import PRECEDENCE, PolicyEngine
 from financial_guardrails.evaluation import EvaluationRecord
 from financial_guardrails.finvault_policy import FinVaultToolPolicyDetector
-from financial_guardrails.judge import PolicyJudgeDetector
+from financial_guardrails.judge import DEFAULT_JUDGE_POLICY_PATH, PolicyJudgeDetector, load_judge_policy
 from financial_guardrails.judge_backends import BackendCallMetrics, configured_judge_backend
 from financial_guardrails.replay import event_from_message
 from financial_guardrails.schema import Decision, Mode, RiskCategory, Surface, Verdict
@@ -43,6 +43,7 @@ def evaluate_cases(
     *,
     judge_mode: str,
     backend_name: str = "rules_only",
+    judge_policy_path: str | Path = DEFAULT_JUDGE_POLICY_PATH,
     outcome_score_mode: str = "enforcement_only",
     checkpoint_path: str | Path | None = None,
     progress_sink: Callable[[int, int], None] | None = None,
@@ -68,7 +69,7 @@ def evaluate_cases(
     judge_detector: PolicyJudgeDetector | None = None
     if judge_mode != "rules_only":
         backend = configured_judge_backend(backend_name, metrics_sink=metrics.append)
-        judge_detector = PolicyJudgeDetector(backend)
+        judge_detector = PolicyJudgeDetector(backend, policy=load_judge_policy(judge_policy_path))
         full_engine = PolicyEngine(
             additional_detectors=(*additional_rules, judge_detector),
             include_tool_policy=finvault_detector is None,

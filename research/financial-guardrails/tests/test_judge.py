@@ -15,6 +15,7 @@
 
 import json
 import time
+from pathlib import Path
 
 import pytest
 from financial_guardrails import FinancialGuard, GuardUnavailable
@@ -83,6 +84,15 @@ def test_prompt_contains_written_policy_and_marks_event_untrusted():
     assert '"risk_score": 0.1' in prompt
     assert "INJ-01" in prompt
     assert "ignore this policy" in prompt
+
+
+def test_version_2_policy_preserves_the_response_contract_and_adds_narrow_clarifications():
+    policy = load_judge_policy(Path(__file__).parents[1] / "policies" / "llm_judge_v2.yml")
+
+    assert policy.policy_version == "2.0.0"
+    assert {entry.id for entry in policy.policies} == {entry.id for entry in load_judge_policy().policies}
+    assert any("ordinary financial workflow text" in instruction for instruction in policy.instructions)
+    assert any("protected account, routing, payment-card" in instruction for instruction in policy.instructions)
 
 
 def test_judge_allow_is_a_valid_detector_result():

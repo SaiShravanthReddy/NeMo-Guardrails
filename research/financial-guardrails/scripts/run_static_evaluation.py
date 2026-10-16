@@ -57,6 +57,12 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
     parser.add_argument("--resume-checkpoint", type=Path)
     parser.add_argument(
+        "--judge-policy-path",
+        type=Path,
+        default=DEFAULT_JUDGE_POLICY_PATH,
+        help="Versioned judge-policy file; defaults to the frozen Version 1 policy.",
+    )
+    parser.add_argument(
         "--outcome-score-all-events",
         action="store_true",
         help="Collect LLM outcome scores after rule interventions without changing enforcement decisions.",
@@ -130,7 +136,7 @@ def main() -> None:
     dataset_sha256 = inspect_json_dataset(adapter.data_path).sha256
     metadata_sha256 = _sha256(adapter.metadata_path)
     policy_sha256 = _sha256(DEFAULT_POLICY_PATH)
-    judge_policy_sha256 = args.judge_policy_sha256 or _sha256(DEFAULT_JUDGE_POLICY_PATH)
+    judge_policy_sha256 = args.judge_policy_sha256 or _sha256(args.judge_policy_path)
     if args.judge_policy_sha256 and not _valid_sha256(args.judge_policy_sha256):
         parser.error("--judge-policy-sha256 must be a 64-character lowercase SHA-256 digest")
     benchmark_policy_sha256 = (
@@ -164,6 +170,7 @@ def main() -> None:
         cases,
         judge_mode=args.judge_mode,
         backend_name=args.backend,
+        judge_policy_path=args.judge_policy_path,
         outcome_score_mode="score_all_outcome_events" if args.outcome_score_all_events else "enforcement_only",
         checkpoint_path=args.resume_checkpoint or args.output_dir / f"{run_id}.checkpoint.jsonl",
         progress_sink=_MilestoneReporter(),

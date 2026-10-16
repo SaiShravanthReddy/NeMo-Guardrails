@@ -2,8 +2,8 @@
 
 ## Status and scope
 
-This is a proposal and analysis plan. It does not modify Version 1 policies,
-the selected model, the judge prompt, routing, or generation settings.
+This is a policy-only Version 2 experiment plan. It does not modify Version 1,
+the selected model, routing, or generation settings.
 
 Team guidance received on 2026-10-14:
 
@@ -68,6 +68,26 @@ Git. Review the corresponding raw traces only in an authorized environment.
 `VERSION_2_REVIEW_MATRIX.md` records the two-split priorities and the required
 classification/approval gate for proposing an exact policy change.
 
+## Version 2 policy change
+
+`policies/llm_judge_v2.yml` is a separate, versioned policy file. It preserves
+the Version 1 policy IDs, response schema, model, and routing. Its additional
+policy instructions make four narrow clarifications identified through the
+development review:
+
+- routine financial workflow text in a tool result is not prompt injection by
+  format alone;
+- read-only or reversible analysis and lookup tasks are permitted when they do
+  not execute a transaction or bypass a control;
+- ordinary values inside an active workflow are not automatically a data leak;
+  credentials, payment cards, protected account/routing data, and system
+  instructions remain protected; and
+- `TOOL-DEVIATION` requires a dangerous or unrelated action, not merely a
+  read-only analytical tool.
+
+This policy is selected explicitly with `--judge-policy-path`; its SHA-256 is
+recorded in every evaluation artifact. It is not a change to Version 1.
+
 ## Proposed policy work
 
 ### 1. Review confirmation candidates before relaxing them
@@ -113,7 +133,8 @@ matched policies and prevents changes based on co-occurrence alone.
 ## What Version 2 will not change
 
 - The local Qwen judge model.
-- The LLM judge prompt or response schema.
+- The LLM judge response schema. Version 2 changes only the versioned written
+  policy instructions supplied to that same judge.
 - The `rules_first_cascade` routing mode.
 - The dataset adapters, labels, source-group split assignment, or final Version
   1 artifacts.
@@ -126,20 +147,14 @@ policy, model, prompt, routing mode, or Version 2 selection.
 
 ## Validation and decision gates
 
-1. Document each proposed rule change, affected policy ID/tool, rationale, and
-   expected security tradeoff.
-2. Obtain team approval before editing a policy.
-3. Add regression tests for every approved benign and malicious case pattern.
-4. Evaluate only development and calibration splits while revising policies.
-5. Select a Version 2 policy with pilot results using F1/AUPRC as primary
+1. Add regression tests for every approved benign and malicious case pattern.
+2. Evaluate only development and calibration splits while revising policies.
+3. Select a Version 2 policy with pilot results using F1/AUPRC as primary
    metrics and FPR/confirmation burden as operational safeguards.
-6. Freeze the approved Version 2 policy and run its final split once.
-7. Compare Version 1 and Version 2 as separate experiments; do not overwrite
+4. Freeze the approved Version 2 policy and run its final split once.
+5. Compare Version 1 and Version 2 as separate experiments; do not overwrite
    Version 1 results.
 
-## Decision needed before implementation
-
-Approve the exact policy changes after the authorized case review. In
-particular, a normal-labeled high-impact financial action should remain a
-confirmation candidate unless the review establishes that it is safely
-allowable without trusted confirmation.
+Normal-labeled high-impact financial actions remain confirmation candidates
+unless the review establishes that they are safely allowable without trusted
+confirmation.
