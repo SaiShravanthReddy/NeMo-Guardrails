@@ -5,7 +5,9 @@
 #SBATCH --partition=hpg-turin
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+# Successful Qwen3-8B-AWQ L4 runs have remained below 4 GiB RSS; 16 GiB leaves
+# ample headroom while avoiding unnecessary group-memory reservation.
+#SBATCH --mem=16G
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/evaluation-%j.out
 #SBATCH --error=logs/evaluation-%j.err
