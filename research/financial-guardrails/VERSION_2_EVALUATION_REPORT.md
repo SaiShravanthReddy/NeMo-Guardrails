@@ -60,7 +60,7 @@ Git.
 
 | Gate | Required result | Status |
 | --- | --- | --- |
-| Development replay | 100% completion, zero detector errors, complete scores | Pending repair |
+| Development replay | 100% completion, zero detector errors, complete scores | Incomplete: 413/415 completed; two fail-closed unknown-policy-ID errors |
 | Calibration replay | 100% completion, zero detector errors, complete scores | Pending repair |
 | V1–V2 paired comparison | Same cases, decision agreement and metric deltas reported | Pending repaired artifacts |
 | Pilot selection | F1/AUPRC primary; FPR and confirmation burden reviewed | Pending |
@@ -70,6 +70,12 @@ Git.
 ## Results tables
 
 ### Development and calibration comparison
+
+The current Version 2 development replay is not eligible for policy selection:
+two attack cases exhausted the judge's bounded repair attempts after returning
+unknown policy IDs. They failed closed, so they were not allowed. The artifact
+is retained for reliability analysis but is not used in a V1–V2 metric
+comparison.
 
 | Split | Version | Coverage | F1 | AUPRC | FPR | Confirmation burden | Detector errors |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
