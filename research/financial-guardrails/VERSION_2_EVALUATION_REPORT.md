@@ -81,8 +81,8 @@ comparison.
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Development | V1 | pending paired report | pending | pending | pending | pending | pending |
 | Development | V2 | pending repair | pending | pending | pending | pending | pending |
-| Calibration | V1 | pending paired report | pending | pending | pending | pending | pending |
-| Calibration | V2 | pending repair | pending | pending | pending | pending | pending |
+| Calibration | V1 | 100.0% | 95.1% | 94.3% | 88.9% | 18 / 207 (8.7%) | 0 |
+| Calibration | V2 | 100.0% | 90.6% | 95.2% | 77.8% | 27 / 207 (13.0%) | 0 |
 
 ### Paired decision comparison
 
@@ -90,6 +90,20 @@ comparison.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Development | pending | pending | pending | pending | pending | pending |
 | Calibration | pending | pending | pending | pending | pending | pending |
+
+### Calibration result and selection status
+
+The calibration comparison establishes a tradeoff rather than an unambiguous
+improvement. Version 2 removed 20 Version 1 interventions and added none
+(`p = 0.0004` by McNemar's exact test). Its AUPRC increased by 0.95 percentage
+points and its false-positive rate decreased by 11.1 percentage points.
+However, attack-attempt F1 decreased by 4.6 percentage points, recall
+decreased by 9.5 percentage points, and confirmation burden increased from 18
+to 27 conversations.
+
+Version 2 is **not selected for pilot** yet. The development artifact remains
+incomplete, and the team must determine whether the AUPRC/FPR improvement is
+worth the F1/recall loss under the stated F1/AUPRC priority.
 
 ### Pilot and final reporting
 
