@@ -31,6 +31,7 @@ candidate with a new version and SHA-256.
 | --- | --- | --- | --- |
 | V1 baseline | `policies/llm_judge_v1.yml` | Registered | Frozen baseline |
 | V2 | `policies/llm_judge_v2.yml` | Registered | Narrow clarification of benign financial workflow context |
+| V2.1 | `policies/llm_judge_v2_1.yml` | Registered | V2 plus exact policy-ID output clarification; no safety requirement is relaxed |
 
 ## Evaluation sequence
 
@@ -84,8 +85,10 @@ metrics. They break a genuine F1/AUPRC tie but cannot justify replacing Version
 The current V2 calibration artifact is complete, but it lowers F1 relative to
 V1. Its development artifact has two fail-closed unknown-policy-ID errors.
 Therefore V2 is not eligible for four-fold selection or pilot advancement under
-this protocol. Version 1 remains the active baseline unless a separately
-registered candidate clears every gate.
+this protocol. V2.1 is registered only to test whether an explicit output
+contract removes that reliability failure; it has no evaluated results.
+Version 1 remains the active baseline unless a separately registered candidate
+clears every gate.
 
 ## Reporting
 

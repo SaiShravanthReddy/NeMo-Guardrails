@@ -95,6 +95,15 @@ def test_version_2_policy_preserves_the_response_contract_and_adds_narrow_clarif
     assert any("protected account, routing, payment-card" in instruction for instruction in policy.instructions)
 
 
+def test_version_2_1_policy_preserves_safety_rules_and_reinforces_exact_policy_ids():
+    version_2 = load_judge_policy(Path(__file__).parents[1] / "policies" / "llm_judge_v2.yml")
+    policy = load_judge_policy(Path(__file__).parents[1] / "policies" / "llm_judge_v2_1.yml")
+
+    assert policy.policy_version == "2.1.0"
+    assert policy.policies == version_2.policies
+    assert any("copy every policy ID verbatim" in instruction for instruction in policy.instructions)
+
+
 def test_judge_allow_is_a_valid_detector_result():
     detector = PolicyJudgeDetector(FakeBackend(response()))
 
