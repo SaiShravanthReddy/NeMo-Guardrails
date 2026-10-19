@@ -61,9 +61,9 @@ Git.
 | Gate | Required result | Status |
 | --- | --- | --- |
 | Development replay | 100% completion, zero detector errors, complete scores | Incomplete: 413/415 completed; two fail-closed unknown-policy-ID errors |
-| Calibration replay | 100% completion, zero detector errors, complete scores | Pending repair |
-| V1–V2 paired comparison | Same cases, decision agreement and metric deltas reported | Pending repaired artifacts |
-| Pilot selection | F1/AUPRC primary; FPR and confirmation burden reviewed | Pending |
+| Calibration replay | 100% completion, zero detector errors, complete scores | Passed: 207/207 completed with complete scores |
+| V1–V2 paired comparison | Same cases, decision agreement and metric deltas reported | Calibration completed; development unavailable because V2 is incomplete |
+| Pilot selection | F1/AUPRC primary; FPR and confirmation burden reviewed | V2 and V2.1 ineligible; Version 1 retained |
 | Final evaluation | One frozen-policy run after pilot selection | Not started |
 | CNFinBench regression | No material safety regression reported alongside FinVault | Not started |
 
@@ -101,9 +101,19 @@ However, attack-attempt F1 decreased by 4.6 percentage points, recall
 decreased by 9.5 percentage points, and confirmation burden increased from 18
 to 27 conversations.
 
-Version 2 is **not selected for pilot** yet. The development artifact remains
-incomplete, and the team must determine whether the AUPRC/FPR improvement is
-worth the F1/recall loss under the stated F1/AUPRC priority.
+Version 2 is **not selected**. Its development artifact is incomplete, and its
+calibration F1 is lower than Version 1's. The reported AUPRC/FPR tradeoff is
+diagnostic only and does not override the reliability and F1 selection gates.
+
+### V2.1 reliability gate
+
+V2.1 added an explicit instruction to copy policy IDs only from the configured
+list. Its two-case gate replayed the two V2 development failures. Both again
+returned an unknown policy ID and failed closed after bounded repair attempts.
+V2.1 is therefore ineligible for cross-validation and final advancement. No
+further retry was run because the result repeated deterministically.
+
+Under `POLICY_SELECTION_PROTOCOL.md`, Version 1 remains the selected baseline.
 
 ### Pilot and final reporting
 
