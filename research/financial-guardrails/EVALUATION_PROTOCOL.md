@@ -117,6 +117,12 @@ source-group-disjoint folds over the non-final 80% only. This analysis measures
 stability for the already-selected configuration; it must not select policies,
 thresholds, models, or modes, and it must not include the final split.
 
+For the separately registered Version 2 policy experiment, the policy-selection
+protocol supersedes this timing: four-fold validation over the same non-final
+80% is performed before its one-time final run. The backend and routing mode
+remain frozen from the original pilot selection. See
+`POLICY_SELECTION_PROTOCOL.md`.
+
 ## Required reporting
 
 For every valid configuration, report per-conversation p50 and p95 latency,

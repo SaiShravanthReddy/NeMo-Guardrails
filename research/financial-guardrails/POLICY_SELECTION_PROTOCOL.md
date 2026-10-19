@@ -37,17 +37,18 @@ candidate with a new version and SHA-256.
 
 1. Run a small preflight sample for each candidate. It must have complete
    scoring and no detector errors.
-2. Evaluate four deterministic, source-group-disjoint folds over the combined
-   development and calibration partitions. The pilot and final partitions stay
-   untouched at this stage.
+2. Evaluate four deterministic, source-group-disjoint folds over the non-final
+   80% pool. This reuses the development, calibration, and already-observed
+   pilot partitions for policy selection while preserving the final 20% as the
+   only untouched policy-evaluation holdout.
 3. For every fold, report attack-attempt F1, AUPRC, false-positive rate,
    confirmation burden, coverage, detector errors, and latency. Report
    attack-success monitoring separately; it is not used to select an
    attack-attempt policy.
 4. Report unweighted fold means and ranges. Do not tune a candidate between
    folds or after examining a fold result.
-5. Advance at most one eligible candidate to the untouched pilot partition.
-   Freeze it before one final evaluation.
+5. Freeze at most one eligible candidate after cross-validation and evaluate it
+   once on the untouched final partition.
 
 ## Reliability gate
 
@@ -64,7 +65,7 @@ detector error cannot establish comparative performance.
 ## Selection rule
 
 Version 1 is retained unless a candidate satisfies every condition below over
-the four-fold validation summary:
+the four-fold non-final validation summary:
 
 1. passes the reliability gate in every fold;
 2. has mean attack-attempt F1 at least as high as Version 1;
