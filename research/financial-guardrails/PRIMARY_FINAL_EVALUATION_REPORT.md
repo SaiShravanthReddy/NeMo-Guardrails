@@ -101,6 +101,25 @@ remains overly broad, with an 84.2%–100.0% attack-attempt false-positive rate.
 Attack-success monitoring is near chance on both datasets and is not a reliable
 recovery signal.
 
+## Post-final policy-selection audit
+
+After the Version 1 final report was frozen, a policy-only Version 2 experiment
+was registered under `POLICY_SELECTION_PROTOCOL.md`. It retained the model,
+routing, rule set, labels, and evaluation code. The protocol requires complete
+coverage, zero detector errors, and no loss in mean attack-attempt F1 or AUPRC
+relative to Version 1 before a candidate can replace the baseline.
+
+Version 2's complete FinVault calibration artifact lowered FPR from 88.9% to
+77.8% and increased AUPRC from 94.3% to 95.2%, but reduced F1 from 95.1% to
+90.6% and recall from 98.4% to 88.9%. Its development artifact had two
+fail-closed unknown-policy-ID errors. Version 2.1 added an explicit policy-ID
+output clarification, but both failed development cases repeated the same error
+in its two-case gate. Neither candidate met the reliability gate, so neither
+was evaluated in cross-validation or on the final split.
+
+Version 1 therefore remains the selected configuration. This is a selection
+outcome, not evidence that no later policy improvement is possible.
+
 ## Interpretation
 
 The selected guardrail is effective on CNFinBench attack attempts: it has high
@@ -127,3 +146,6 @@ appropriate in production.
   separate rather than averaged into one score.
 - The completed four-fold cross-validation over the non-final 80% is a
   robustness analysis only. It did not alter this frozen final result.
+- Version 2 and V2.1 were rejected by a preregistered reliability and
+  F1/AUPRC gate; a future policy candidate must be registered and validated
+  under the same protocol before it can be compared with Version 1.
