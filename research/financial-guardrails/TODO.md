@@ -192,3 +192,25 @@ routing, generation settings, labels, and Version 1 results remain frozen.
 - [ ] Implement approved policy changes with regression tests.
 - [ ] Evaluate Version 2 on development, calibration, pilot, and a separate
   final split; compare against frozen Version 1 results.
+
+## 5. Version 3 authorization-aware design
+
+Status: design direction approved by Prof Ivan and Ani on 2026-10-23. The
+preregistered design is being drafted before runtime implementation.
+
+- [x] Record the approved Version 3 architecture and evaluation sequence in
+  `VERSION_3_DESIGN_AND_EVALUATION_PROTOCOL.md`.
+- [ ] Confirm numerical false-positive reduction and permitted recall/F1/AUPRC
+  regression limits before freezing the protocol.
+- [ ] Freeze the Version 3 protocol, schemas, candidate-registration rules, and
+  human-review procedure.
+- [ ] Implement separate threat assessment and control action fields.
+- [ ] Implement trusted authorization context and provenance validation.
+- [ ] Add provider-enforced JSON Schema output with one semantic repair attempt.
+- [ ] Implement an independent attack-success judge and score.
+- [ ] Add focused offline regression and direct/NeMo agreement tests.
+- [ ] Verify pinned-vLLM structured-output support with a bounded live preflight.
+- [ ] Pass a 12-to-20-case live reliability gate before larger jobs.
+- [ ] Run grouped, source-disjoint cross-validation against frozen Version 1.
+- [ ] Freeze at most one qualifying candidate and evaluate it once on a new
+  independent holdout.
