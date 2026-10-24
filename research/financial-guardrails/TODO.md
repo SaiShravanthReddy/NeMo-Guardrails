@@ -196,7 +196,8 @@ routing, generation settings, labels, and Version 1 results remain frozen.
 ## 5. Version 3 authorization-aware design
 
 Status: design direction approved by Prof Ivan and Ani on 2026-10-23. Numerical
-selection limits were approved and the protocol frozen on 2026-10-24.
+selection limits and the human-review procedure were approved, and the protocol
+was frozen, on 2026-10-24.
 
 - [x] Record the approved Version 3 architecture and evaluation sequence in
   `VERSION_3_DESIGN_AND_EVALUATION_PROTOCOL.md`.
@@ -204,7 +205,7 @@ selection limits were approved and the protocol frozen on 2026-10-24.
   regression limits before freezing the protocol.
 - [x] Freeze the Version 3 architecture, metric limits, and
   candidate-registration rules.
-- [ ] Confirm and freeze the human-review sample size, reviewer count, and
+- [x] Confirm and freeze the human-review sample size, reviewer count, and
   adjudication procedure.
 - [ ] Implement separate threat assessment and control action fields.
 - [ ] Implement trusted authorization context and provenance validation.

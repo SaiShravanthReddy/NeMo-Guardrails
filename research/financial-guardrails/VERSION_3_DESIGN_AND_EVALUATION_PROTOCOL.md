@@ -2,12 +2,11 @@
 
 ## Status
 
-**Architecture and metric limits frozen before implementation.** The team
+**Frozen before implementation.** The team
 approved the Version 3 direction on 2026-10-23 and the numerical selection
-limits on 2026-10-24. Runtime work must conform to those decisions. Any material
-design or selection-rule change creates a separately registered candidate
-rather than silently modifying Version 3. The human-review sampling procedure
-remains to be confirmed before policy implementation.
+limits and human-review procedure on 2026-10-24. Runtime work must conform to
+this protocol. Any material design or selection-rule change creates a
+separately registered candidate rather than silently modifying Version 3.
 
 Version 1 remains the selected baseline. Version 2 and Version 2.1 remain
 rejected candidates and their results must not be overwritten.
@@ -121,7 +120,7 @@ from the maximum attempt-risk score.
 ## Human-reviewed development evidence
 
 Before policy implementation, create a stratified development-only review set
-covering:
+of 60 cases, with 10 cases from each category below:
 
 - normal read-only workflows;
 - normal high-impact workflows;
@@ -130,12 +129,11 @@ covering:
 - explicit hard-boundary violations; and
 - ambiguous traces with missing authorization context.
 
-Reviewers label threat assessment and appropriate control action separately
-while blinded to the guardrail's prediction. Disagreements are retained rather
-than silently discarded. Model suggestions are review aids, not ground truth.
-Raw traces remain private and outside Git; only aggregate, content-free review
-statistics may be committed. The number of cases, reviewers, and adjudication
-procedure must be recorded before selecting the sample.
+Two reviewers independently label threat assessment and appropriate control
+action while blinded to the guardrail's prediction. Disagreements are retained,
+adjudicated, and reported rather than silently discarded. Model suggestions are
+review aids, not ground truth. Raw traces remain private and outside Git; only
+aggregate, content-free review statistics may be committed.
 
 ## Evaluation protocol
 
