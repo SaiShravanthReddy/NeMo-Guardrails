@@ -212,6 +212,10 @@ was frozen, on 2026-10-24.
   requirement.
 - [ ] Verify source-group capacity for all amended review strata, then generate
   the blinded 60-case worksheets with the recorded deterministic seed.
+- [ ] Replace label-bearing case IDs in private reviewer worksheets and trace
+  display with opaque review IDs; retain a separate private lookup.
+- [ ] Exclude every reviewed source group from scored Version 3 qualification
+  folds and recompute Version 1 metrics on identical remaining cases.
 - [ ] Implement separate threat assessment and control action fields.
 - [ ] Implement trusted authorization context and provenance validation.
 - [ ] Add provider-enforced JSON Schema output with one semantic repair attempt.
