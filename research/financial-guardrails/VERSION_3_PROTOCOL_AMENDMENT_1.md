@@ -2,10 +2,11 @@
 
 ## Status
 
-**Proposed and approved by the project owner; pending team ratification.** This
-amendment was written before Version 3 runtime implementation or evaluation.
-It preserves the original frozen protocol and records why each change is
-needed. If ratified, it supersedes only the sections named below.
+**Ratified, before Version 3 runtime implementation or evaluation.** The
+project owner reported approval on 2026-10-24 of proposal commit `66d88a869`.
+This amendment preserves the original frozen protocol and supersedes only the
+sections named below. Any later material change requires another numbered
+amendment.
 
 ## Evidence requiring amendment
 
@@ -154,6 +155,6 @@ This amendment does not change:
 
 ## Ratification and freeze
 
-After Prof Ivan and Ani ratify this amendment, record the approval date and
-commit hash here before selecting the 60 cases. Any later material change must
-be recorded as another numbered amendment.
+The project owner reported ratification on 2026-10-24 against proposal commit
+`66d88a869`. The external approval record is not stored in this repository.
+No review cases were selected before this approval.
