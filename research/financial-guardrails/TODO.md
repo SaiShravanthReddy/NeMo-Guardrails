@@ -207,6 +207,11 @@ was frozen, on 2026-10-24.
   candidate-registration rules.
 - [x] Confirm and freeze the human-review sample size, reviewer count, and
   adjudication procedure.
+- [ ] Ratify `VERSION_3_PROTOCOL_AMENDMENT_1.md`, which adds dual FPR gates,
+  replaces infeasible review strata, and strengthens the independent-holdout
+  requirement.
+- [ ] Verify source-group capacity for all amended review strata, then generate
+  the blinded 60-case worksheets with the recorded deterministic seed.
 - [ ] Implement separate threat assessment and control action fields.
 - [ ] Implement trusted authorization context and provenance validation.
 - [ ] Add provider-enforced JSON Schema output with one semantic repair attempt.
