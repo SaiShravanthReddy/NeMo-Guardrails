@@ -23,6 +23,9 @@ CV_FOLD="${CV_FOLD:-}"
 RESUME_CHECKPOINT="${RESUME_CHECKPOINT:-}"
 OUTCOME_SCORE_ALL_EVENTS="${OUTCOME_SCORE_ALL_EVENTS:-0}"
 JUDGE_POLICY_PATH="${JUDGE_POLICY_PATH:-}"
+INPUT_VIEW="${INPUT_VIEW:-legacy_raw}"
+REVIEWED_GROUPS_FILE="${REVIEWED_GROUPS_FILE:-}"
+OUTPUT_DIR="${OUTPUT_DIR:-outputs}"
 PROJECT_ROOT="${SLURM_SUBMIT_DIR}"
 VLLM_BIN="${PROJECT_ROOT}/.venv-vllm/bin/vllm"
 NINJA_BIN="${PROJECT_ROOT}/.venv-vllm/bin/ninja"
@@ -30,6 +33,21 @@ PROJECT_PYTHON="${PROJECT_ROOT}/.venv/bin/python"
 MODEL_ID="Qwen/Qwen3-8B-AWQ"
 MODEL_REVISION="4da05a8edb55c6046cce958586c33b61da07bb79"
 SERVER_LOG="${PROJECT_ROOT}/logs/vllm-${SLURM_JOB_ID}.log"
+
+[[ "${INPUT_VIEW}" == "legacy_raw" || "${INPUT_VIEW}" == "v3_clean" ]] || {
+  echo "INPUT_VIEW must be legacy_raw or v3_clean" >&2
+  exit 2
+}
+if [[ -n "${REVIEWED_GROUPS_FILE}" ]]; then
+  [[ "${DATASET}" == "finvault-v5-fixed-full" && -n "${CV_FOLD}" ]] || {
+    echo "REVIEWED_GROUPS_FILE requires FinVault and CV_FOLD" >&2
+    exit 2
+  }
+  test -r "${REVIEWED_GROUPS_FILE}"
+fi
+if [[ "${DATASET}" == "finvault-v5-fixed-full" && -n "${CV_FOLD}" && "${INPUT_VIEW}" == "v3_clean" ]]; then
+  [[ -n "${REVIEWED_GROUPS_FILE}" ]] || { echo "V3 FinVault CV requires REVIEWED_GROUPS_FILE" >&2; exit 2; }
+fi
 
 test -x "${VLLM_BIN}"
 test -x "${NINJA_BIN}"
@@ -74,7 +92,12 @@ evaluation_args=(
   --split "${SPLIT}"
   --judge-mode "${JUDGE_MODE}"
   --backend hipergator
+  --input-view "${INPUT_VIEW}"
+  --output-dir "${OUTPUT_DIR}"
 )
+if [[ -n "${REVIEWED_GROUPS_FILE}" ]]; then
+  evaluation_args+=(--reviewed-groups-file "${REVIEWED_GROUPS_FILE}")
+fi
 if [[ -n "${MAX_CASES}" ]]; then
   [[ "${MAX_CASES}" =~ ^[1-9][0-9]*$ ]] || { echo "MAX_CASES must be a positive integer" >&2; exit 2; }
   evaluation_args+=(--max-cases "${MAX_CASES}")
