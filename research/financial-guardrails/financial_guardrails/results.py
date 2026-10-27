@@ -51,6 +51,7 @@ class ExperimentManifest(BaseModel):
     case_limit: int | None = Field(default=None, ge=1)
     case_selection_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     cross_validation_fold: int | None = Field(default=None, ge=0)
+    reviewed_groups_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     policy_id: str = Field(min_length=1)
     policy_version: str = Field(min_length=1)
     policy_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -61,6 +62,7 @@ class ExperimentManifest(BaseModel):
     model_revision: str | None = None
     judge_mode: Literal["rules_only", "all_events", "rules_first_cascade"]
     outcome_score_mode: Literal["enforcement_only", "score_all_outcome_events"] = "enforcement_only"
+    input_view: Literal["legacy_raw", "v3_clean"] = "legacy_raw"
     positive_label: Literal[0, 1]
     decision_threshold: float | None = Field(default=None, ge=0, le=1)
     generation_settings: dict[str, JsonValue] = Field(default_factory=dict)
@@ -99,6 +101,8 @@ class EvaluationArtifact(BaseModel):
             raise ValueError("artifact contains a record from another dataset")
         if any(record.positive_label != self.manifest.positive_label for record in self.records):
             raise ValueError("artifact positive labels do not match the manifest")
+        if any(record.input_view != self.manifest.input_view for record in self.records):
+            raise ValueError("artifact input views do not match the manifest")
         elapsed = self.manifest.inference_elapsed_seconds
         if elapsed is None:
             elapsed = (self.manifest.completed_at - self.manifest.started_at).total_seconds()

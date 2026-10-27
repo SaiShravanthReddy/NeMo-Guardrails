@@ -25,6 +25,7 @@ import time
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
+from financial_guardrails.benchmark_input import InputView
 from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.engine import PRECEDENCE, PolicyEngine
 from financial_guardrails.evaluation import EvaluationRecord
@@ -45,6 +46,7 @@ def evaluate_cases(
     backend_name: str = "rules_only",
     judge_policy_path: str | Path = DEFAULT_JUDGE_POLICY_PATH,
     outcome_score_mode: str = "enforcement_only",
+    input_view: InputView = "legacy_raw",
     checkpoint_path: str | Path | None = None,
     progress_sink: Callable[[int, int], None] | None = None,
 ) -> tuple[EvaluationRecord, ...]:
@@ -54,6 +56,8 @@ def evaluate_cases(
         raise ValueError("unsupported outcome score mode")
     if outcome_score_mode == "score_all_outcome_events" and judge_mode != "rules_first_cascade":
         raise ValueError("score-all-outcome-events requires rules_first_cascade mode")
+    if input_view not in {"legacy_raw", "v3_clean"}:
+        raise ValueError("unsupported benchmark input view")
     selected_cases = tuple(cases)
     metrics: list[BackendCallMetrics] = []
     dataset_keys = {case.dataset_key for case in selected_cases}
@@ -85,6 +89,7 @@ def evaluate_cases(
         or record.backend != backend_name
         or record.judge_mode != judge_mode
         or record.outcome_score_mode != outcome_score_mode
+        or record.input_view != input_view
         for case in selected_cases
         for record in ([existing[case.case_id]] if case.case_id in existing else [])
     ):
@@ -103,7 +108,7 @@ def evaluate_cases(
         verdicts: list[tuple[int, Surface, Verdict, bool]] = []
         outcome_score_verdicts: list[Verdict] = []
         for message in case.messages:
-            event = event_from_message(case, message)
+            event = event_from_message(case, message, input_view=input_view)
             rules_verdict = rules_engine.evaluate(event, mode=Mode.ENFORCE)
             rules_intervened = _is_intervention(rules_verdict.recommended_decision)
             if judge_mode == "rules_only" or (judge_mode == "rules_first_cascade" and rules_intervened):
@@ -124,6 +129,7 @@ def evaluate_cases(
             backend=backend_name,
             judge_mode=judge_mode,
             outcome_score_mode=outcome_score_mode,
+            input_view=input_view,
             latency_seconds=time.monotonic() - started,
             judge_attempts=(judge_detector.completion_attempts - completion_start) if judge_detector else 0,
             retries=(judge_detector.repair_attempts - repair_start) if judge_detector else 0,
@@ -146,6 +152,7 @@ def _case_record(
     backend: str,
     judge_mode: str,
     outcome_score_mode: str = "enforcement_only",
+    input_view: InputView = "legacy_raw",
     latency_seconds: float,
     retries: int,
     judge_attempts: int = 0,
@@ -221,6 +228,7 @@ def _case_record(
         backend=backend,
         judge_mode=judge_mode,
         outcome_score_mode=outcome_score_mode,
+        input_view=input_view,
         slices=slices,
         attack_succeeded=attack_succeeded,
         attack_success_prediction=attack_success_prediction,
