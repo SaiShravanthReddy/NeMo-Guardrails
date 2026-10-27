@@ -29,6 +29,12 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from financial_guardrails.benchmark_input import (
+    InputView,
+    clean_finvault_tool_result,
+    opaque_event_id,
+    redact_benchmark_case_reference,
+)
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
 from financial_guardrails.schema import SecurityEvent, SourceRole, Surface, TrustLevel
 
@@ -58,13 +64,26 @@ def parse_finvault_tool_call(text: str) -> ParsedToolCall:
     return ParsedToolCall(name=name, arguments=arguments)
 
 
-def event_from_message(case: BenchmarkCase, message: BenchmarkMessage) -> SecurityEvent:
-    event_id = f"{case.case_id}:{message.turn_index}"
+def event_from_message(
+    case: BenchmarkCase, message: BenchmarkMessage, *, input_view: InputView = "legacy_raw"
+) -> SecurityEvent:
+    if input_view not in {"legacy_raw", "v3_clean"}:
+        raise ValueError("unsupported benchmark input view")
+    event_id = (
+        f"{case.case_id}:{message.turn_index}"
+        if input_view == "legacy_raw"
+        else opaque_event_id(case.dataset_key, case.case_id, message.turn_index)
+    )
+    content = message.content
+    if input_view == "v3_clean":
+        if message.kind == "tool_result" and case.dataset_key == "finvault-v5-fixed-full":
+            content = clean_finvault_tool_result(content)
+        content = redact_benchmark_case_reference(content, case.case_id)
     if message.kind == "tool_call":
-        parsed = parse_finvault_tool_call(message.content)
+        parsed = parse_finvault_tool_call(content)
         return SecurityEvent(
             event_id=event_id,
-            content=message.content,
+            content=content,
             surface=Surface.TOOL_CALL,
             source_role=SourceRole.ASSISTANT,
             trust=TrustLevel.TRUSTED,
@@ -74,7 +93,7 @@ def event_from_message(case: BenchmarkCase, message: BenchmarkMessage) -> Securi
     if message.kind == "tool_result":
         return SecurityEvent(
             event_id=event_id,
-            content=message.content,
+            content=content,
             surface=Surface.TOOL_RESULT,
             source_role=SourceRole.TOOL,
             trust=TrustLevel.UNTRUSTED,
@@ -82,14 +101,14 @@ def event_from_message(case: BenchmarkCase, message: BenchmarkMessage) -> Securi
     if message.role == "user":
         return SecurityEvent(
             event_id=event_id,
-            content=message.content,
+            content=content,
             surface=Surface.INPUT,
             source_role=SourceRole.USER,
             trust=TrustLevel.USER_INTENT,
         )
     return SecurityEvent(
         event_id=event_id,
-        content=message.content,
+        content=content,
         surface=Surface.OUTPUT,
         source_role=SourceRole.ASSISTANT,
         trust=TrustLevel.TRUSTED,

@@ -210,12 +210,26 @@ was frozen, on 2026-10-24.
 - [x] Ratify `VERSION_3_PROTOCOL_AMENDMENT_1.md`, which adds dual FPR gates,
   replaces infeasible review strata, and strengthens the independent-holdout
   requirement.
-- [ ] Verify source-group capacity for all amended review strata, then generate
-  the blinded 60-case worksheets with the recorded deterministic seed.
-- [ ] Replace label-bearing case IDs in private reviewer worksheets and trace
+- [x] Verify source-group capacity for all amended review strata and generate
+  the 60-case worksheets with the recorded deterministic seed. The first packet
+  retained benchmark hints; see `VERSION_3_REVIEW_AUDIT.md` for the limitation.
+- [x] Replace label-bearing case IDs in private reviewer worksheets and trace
   display with opaque review IDs; retain a separate private lookup.
+- [x] Validate 60 reconciled labels and record the owner's confirmation of two
+  independent human reviews followed by human adjudication.
+- [x] Remove identified benchmark hints from a versioned private review packet
+  and audit the 21 affected cases. Preserve the human-approved labels alongside
+  four model-proposed corrections; report the original blinding limitation.
+- [ ] Resolve the blinded-review protocol deviation before claiming the human
+  review qualification requirement is satisfied. The assistant audit is
+  exploratory development evidence, not a replacement blinded human study.
+- [x] Audit evaluation inputs for benchmark hints and add a versioned clean
+  detector view. Raw case IDs and FinVault generator annotations were exposed
+  to the judge; older Version 1 model results need a clean matched rerun.
 - [ ] Exclude every reviewed source group from scored Version 3 qualification
-  folds and recompute Version 1 metrics on identical remaining cases.
+  folds and recompute Version 1 metrics on identical remaining cases. Local
+  exclusion and a rules-only fold smoke test pass; live matched inference is
+  pending.
 - [ ] Implement separate threat assessment and control action fields.
 - [ ] Implement trusted authorization context and provenance validation.
 - [ ] Add provider-enforced JSON Schema output with one semantic repair attempt.

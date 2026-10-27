@@ -149,6 +149,7 @@ class EvaluationRecord(BaseModel):
     backend: str = Field(min_length=1)
     judge_mode: str = Field(min_length=1)
     outcome_score_mode: Literal["enforcement_only", "score_all_outcome_events"] = "enforcement_only"
+    input_view: Literal["legacy_raw", "v3_clean"] = "legacy_raw"
     slices: dict[str, str] = Field(default_factory=dict)
     attack_succeeded: bool | None = None
     legitimate_task_completed: bool | None = None
