@@ -89,6 +89,33 @@ def test_shared_client_sends_bounded_chat_completion(monkeypatch):
     assert metrics[0].failure_code is None
 
 
+def test_structured_completion_replaces_json_object_mode_with_strict_schema(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        del timeout
+        captured["payload"] = json.loads(request.data)
+        return FakeResponse(json.dumps({"choices": [{"message": {"content": '{"ok":true}'}}]}).encode())
+
+    monkeypatch.setattr(judge_backends, "urlopen", fake_urlopen)
+    backend = OpenAICompatibleJudgeBackend(
+        name="test",
+        spec=JudgeBackendSpec(
+            base_url="https://judge.example/v1",
+            model="test-model",
+            request_options={"response_format": {"type": "json_object"}},
+        ),
+        api_key=None,
+    )
+    schema = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}
+
+    assert backend.complete_with_schema("prompt", schema_name="v3_response", schema=schema) == '{"ok":true}'
+    assert captured["payload"]["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {"name": "v3_response", "strict": True, "schema": schema},
+    }
+
+
 @pytest.mark.parametrize("url", ["http://remote.example/v1", "file:///tmp/model", "not-a-url"])
 def test_backend_rejects_unsafe_urls(url):
     with pytest.raises(ValidationError):

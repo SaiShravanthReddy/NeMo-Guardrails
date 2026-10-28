@@ -107,10 +107,28 @@ class OpenAICompatibleJudgeBackend:
         self._metrics_sink = metrics_sink
 
     def complete(self, prompt: str) -> str:
+        return self._complete(prompt)
+
+    def complete_with_schema(self, prompt: str, *, schema_name: str, schema: dict[str, Any]) -> str:
+        """Request provider-enforced structured output for a versioned contract."""
+        if not schema_name or not isinstance(schema, dict) or schema.get("type") != "object":
+            raise ValueError("structured output requires a named object schema")
+        return self._complete(
+            prompt,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {"name": schema_name, "strict": True, "schema": schema},
+            },
+        )
+
+    def _complete(self, prompt: str, *, response_format: dict[str, Any] | None = None) -> str:
+        request_options = dict(self.spec.request_options)
+        if response_format is not None:
+            request_options["response_format"] = response_format
         payload = {
             "model": self.spec.model,
             "messages": [{"role": "user", "content": prompt}],
-            **self.spec.request_options,
+            **request_options,
         }
         headers = {"Content-Type": "application/json"}
         if self._api_key is not None:
