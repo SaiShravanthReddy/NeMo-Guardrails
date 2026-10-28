@@ -55,7 +55,8 @@ def _event(content="process the approved payout"):
 
 def _authorization():
     return TrustedAuthorizationContext(
-        state=AuthorizationState.KNOWN,
+        operation_state=AuthorizationState.KNOWN,
+        transaction_limit_state=AuthorizationState.KNOWN,
         allowed_tools={"approve_payout"},
         allowed_operations={"approve"},
         transaction_limit=100,

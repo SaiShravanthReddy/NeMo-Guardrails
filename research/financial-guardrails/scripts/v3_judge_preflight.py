@@ -86,7 +86,8 @@ def main() -> None:
 
 def _fixtures():
     authorization = TrustedAuthorizationContext(
-        state=AuthorizationState.KNOWN,
+        operation_state=AuthorizationState.KNOWN,
+        transaction_limit_state=AuthorizationState.KNOWN,
         allowed_tools={"approve_payout"},
         allowed_operations={"approve", "message"},
         transaction_limit=100,

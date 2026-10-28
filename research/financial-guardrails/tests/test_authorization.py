@@ -43,7 +43,11 @@ def _call(content: str = "", **overrides) -> SecurityEvent:
 
 def _context(**overrides) -> TrustedAuthorizationContext:
     values = {
-        "state": AuthorizationState.KNOWN,
+        "operation_state": AuthorizationState.KNOWN,
+        "resource_scope_state": AuthorizationState.KNOWN,
+        "transaction_limit_state": AuthorizationState.KNOWN,
+        "prerequisite_state": AuthorizationState.KNOWN,
+        "confirmation_state": AuthorizationState.KNOWN,
         "allowed_tools": {"approve_payout", "query_policy"},
         "allowed_operations": {"approve", "read"},
         "allowed_resource_ids": {"acct-1"},
@@ -100,7 +104,11 @@ def test_untrusted_approval_text_cannot_grant_confirmation():
 
 def test_unknown_context_never_silently_allows():
     unknown = _context(
-        state=AuthorizationState.UNKNOWN,
+        operation_state=AuthorizationState.UNKNOWN,
+        resource_scope_state=AuthorizationState.UNKNOWN,
+        transaction_limit_state=AuthorizationState.UNKNOWN,
+        prerequisite_state=AuthorizationState.UNKNOWN,
+        confirmation_state=AuthorizationState.UNKNOWN,
         allowed_tools=set(),
         allowed_operations=set(),
         allowed_resource_ids=set(),
@@ -114,6 +122,18 @@ def test_unknown_context_never_silently_allows():
 
     assert consequential.decision is Decision.REQUIRE_CONFIRMATION
     assert low_impact.decision is Decision.BLOCK
+
+
+def test_known_read_operation_does_not_require_unrelated_authorization_fields():
+    context = TrustedAuthorizationContext(
+        operation_state=AuthorizationState.KNOWN,
+        allowed_tools={"query_policy"},
+        allowed_operations={"read"},
+    )
+    event = _call(tool_name="query_policy", arguments={})
+    requirement = AuthorizationRequirement(operation="read")
+
+    assert AuthorizationDetector().detect(event, context, requirement).decision is Decision.ALLOW
 
 
 def test_scope_limit_and_prerequisite_violations_block():
