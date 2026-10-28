@@ -29,8 +29,9 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from financial_guardrails.benchmark_input import redact_benchmark_case_reference
 from financial_guardrails.configuration import DEFAULT_POLICY_PATH, load_policy
-from financial_guardrails.datasets import cnfinbench_adapter, finvault_adapter, inspect_json_dataset
+from financial_guardrails.datasets import BenchmarkCase, cnfinbench_adapter, finvault_adapter, inspect_json_dataset
 from financial_guardrails.evaluation import (
     EvaluationRecord,
     bootstrap_confidence_intervals,
@@ -289,7 +290,7 @@ def _load_reviewed_groups(
     dataset_key: str,
     data_path: Path,
     metadata_path: Path,
-    all_cases: tuple,
+    all_cases: tuple[BenchmarkCase, ...],
 ) -> frozenset[str]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -314,7 +315,44 @@ def _load_reviewed_groups(
     development_groups = {item.group_id for item in assigned.values() if item.split == "development"}
     if not groups.issubset(development_groups):
         raise ValueError("reviewed source groups include unknown or non-development groups")
+    if _groups_in_review_packet(packet, all_cases) != groups:
+        raise ValueError("reviewed source groups do not match the cases in the review packet")
     return groups
+
+
+def _groups_in_review_packet(packet_path: Path, all_cases: tuple[BenchmarkCase, ...]) -> frozenset[str]:
+    try:
+        rows = json.loads(packet_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("could not read the review packet") from exc
+    if not isinstance(rows, list) or len(rows) != 60:
+        raise ValueError("review packet must contain exactly 60 cases")
+    by_first_user: dict[str, list[BenchmarkCase]] = {}
+    for case in all_cases:
+        first_user = next((message.content for message in case.messages if message.role == "user"), None)
+        if first_user is not None:
+            normalized = redact_benchmark_case_reference(first_user, case.case_id)
+            by_first_user.setdefault(normalized, []).append(case)
+    matched_ids: set[str] = set()
+    groups: set[str] = set()
+    for row in rows:
+        messages = row.get("messages") if isinstance(row, dict) else None
+        if not isinstance(messages, list):
+            raise ValueError("review packet contains an invalid case")
+        first_user = next(
+            (
+                message.get("content")
+                for message in messages
+                if isinstance(message, dict) and message.get("role") == "user"
+            ),
+            None,
+        )
+        matches = by_first_user.get(first_user, []) if isinstance(first_user, str) else []
+        if len(matches) != 1 or matches[0].case_id in matched_ids:
+            raise ValueError("review packet case cannot be uniquely matched to the frozen dataset")
+        matched_ids.add(matches[0].case_id)
+        groups.add(benchmark_group_id(matches[0]))
+    return frozenset(groups)
 
 
 def _inference_elapsed_seconds(records: tuple[EvaluationRecord, ...]) -> float:
