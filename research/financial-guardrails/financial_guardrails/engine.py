@@ -36,6 +36,7 @@ from financial_guardrails.schema import (
     RiskCategory,
     SecurityEvent,
     Surface,
+    ThreatAssessment,
     Verdict,
 )
 
@@ -45,6 +46,11 @@ PRECEDENCE = {
     Decision.SANITIZE: 2,
     Decision.REQUIRE_CONFIRMATION: 3,
     Decision.BLOCK: 4,
+}
+THREAT_PRECEDENCE = {
+    ThreatAssessment.BENIGN: 0,
+    ThreatAssessment.SUSPICIOUS: 1,
+    ThreatAssessment.MALICIOUS: 2,
 }
 
 
@@ -109,6 +115,12 @@ class PolicyEngine:
             content = event.content
 
         primary = max(findings, key=lambda result: PRECEDENCE[result.decision]) if findings else None
+        threat_results = [result for result in results if result.threat_assessment is not None]
+        primary_threat = (
+            max(threat_results, key=lambda result: THREAT_PRECEDENCE[result.threat_assessment])
+            if threat_results
+            else None
+        )
         return Verdict(
             policy_id=self.config.policy_id,
             policy_version=self.config.policy_version,
@@ -129,6 +141,11 @@ class PolicyEngine:
             content=content,
             risk_score=max(
                 (result.risk_score for result in results if result.risk_score is not None),
+                default=None,
+            ),
+            threat_assessment=primary_threat.threat_assessment if primary_threat else None,
+            threat_score=max(
+                (result.threat_score for result in threat_results if result.threat_score is not None),
                 default=None,
             ),
         )

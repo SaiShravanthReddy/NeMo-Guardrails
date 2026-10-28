@@ -18,10 +18,12 @@ from financial_guardrails.configuration import load_policy
 from financial_guardrails.engine import PolicyEngine
 from financial_guardrails.schema import (
     Decision,
+    DetectorResult,
     Mode,
     SecurityEvent,
     SourceRole,
     Surface,
+    ThreatAssessment,
     TrustLevel,
 )
 from pydantic import ValidationError
@@ -135,3 +137,39 @@ def test_message_limit_is_enforced():
 
     assert verdict.decision is Decision.BLOCK
     assert "LIMIT-01" in verdict.policy_ids
+
+
+class ThreatControlDetector:
+    name = "threat-control"
+
+    def __init__(self, threat, score, decision):
+        self.threat = threat
+        self.score = score
+        self.decision = decision
+
+    def detect(self, _event):
+        return DetectorResult(
+            detector=self.name,
+            decision=self.decision,
+            threat_assessment=self.threat,
+            threat_score=self.score,
+        )
+
+
+def test_threat_assessment_is_independent_from_control_action():
+    benign_confirmation = PolicyEngine(
+        detectors=[ThreatControlDetector(ThreatAssessment.BENIGN, 0.1, Decision.REQUIRE_CONFIRMATION)]
+    ).evaluate(event("approve this legitimate payout"))
+    malicious_observation = PolicyEngine(
+        detectors=[ThreatControlDetector(ThreatAssessment.MALICIOUS, 0.9, Decision.ALLOW)]
+    ).evaluate(event("attempted attack already contained elsewhere"))
+
+    assert benign_confirmation.threat_assessment is ThreatAssessment.BENIGN
+    assert benign_confirmation.recommended_decision is Decision.REQUIRE_CONFIRMATION
+    assert malicious_observation.threat_assessment is ThreatAssessment.MALICIOUS
+    assert malicious_observation.recommended_decision is Decision.ALLOW
+
+
+def test_threat_fields_must_be_supplied_together():
+    with pytest.raises(ValidationError, match="provided together"):
+        DetectorResult(detector="invalid", threat_assessment=ThreatAssessment.SUSPICIOUS)
