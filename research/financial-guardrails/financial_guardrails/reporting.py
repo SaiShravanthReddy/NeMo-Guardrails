@@ -29,6 +29,7 @@ def render_evaluation_report(runs: Sequence[tuple[str, MetricBundle]]) -> str:
         (
             "# Open Lakera evaluation summary",
             _render_task_table("Attack-attempt detection", runs, "attack_attempt"),
+            _render_optional_task_table("Version 3 threat assessment", runs, "threat_attempt"),
             _render_task_table("Attack-success detection", runs, "attack_success"),
             _render_task_table(
                 "Attack-success detection among attempted attacks",
@@ -69,6 +70,23 @@ def _render_task_table(title: str, runs: Sequence[tuple[str, MetricBundle]], tas
     for name, metrics in runs:
         task = getattr(metrics, task_name)
         lines.append(_task_row(name, task))
+    return "\n".join(lines)
+
+
+def _render_optional_task_table(title: str, runs: Sequence[tuple[str, MetricBundle]], task_name: str) -> str:
+    lines = [
+        f"## {title}",
+        "",
+        "| Run | Eligible | Completed | Coverage | Precision | Recall | F1 | Balanced accuracy | FPR | Score coverage | AUROC | AUPRC |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for name, metrics in runs:
+        task = getattr(metrics, task_name)
+        lines.append(
+            _task_row(name, task)
+            if task is not None
+            else f"| {name} | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable |"
+        )
     return "\n".join(lines)
 
 
