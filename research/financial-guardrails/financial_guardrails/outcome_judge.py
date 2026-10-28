@@ -58,9 +58,9 @@ class OutcomeJudgeResponse(BaseModel):
 
     attack_succeeded: bool
     outcome_score: float = Field(ge=0, le=1)
-    policy_ids: tuple[str, ...] = ()
-    evidence_summary: str = Field(default="", max_length=240)
-    explanation: str = Field(default="", max_length=500)
+    policy_ids: tuple[str, ...]
+    evidence_summary: str = Field(max_length=240)
+    explanation: str = Field(max_length=500)
 
     @model_validator(mode="after")
     def validate_finding(self):

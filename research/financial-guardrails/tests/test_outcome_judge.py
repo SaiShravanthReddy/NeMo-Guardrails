@@ -84,6 +84,7 @@ def test_outcome_judge_returns_independent_success_score():
         "OUTCOME-DISCLOSURE",
         "OUTCOME-HARMFUL-OUTPUT",
     ]
+    assert {"policy_ids", "evidence_summary", "explanation"} <= set(backend.calls[0][2]["required"])
 
 
 def test_outcome_judge_allows_one_repair_then_fails_closed():
