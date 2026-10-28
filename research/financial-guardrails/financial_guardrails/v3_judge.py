@@ -35,7 +35,9 @@ from financial_guardrails.schema import (
     Evidence,
     RiskCategory,
     SecurityEvent,
+    Surface,
     ThreatAssessment,
+    TrustLevel,
 )
 
 
@@ -82,11 +84,12 @@ def build_v3_judge_prompt(
         "authorization": authorization.model_dump(mode="json"),
         "operation_requirement": requirement.model_dump(mode="json"),
     }
+    effective_trust = TrustLevel.UNTRUSTED if event.surface in {Surface.TOOL_CALL, Surface.OUTPUT} else event.trust
     untrusted = {
         "event_id": event.event_id,
         "surface": event.surface.value,
         "source_role": event.source_role.value,
-        "trust": event.trust.value,
+        "trust": effective_trust.value,
         "content": event.content,
         "tool_name": event.tool_name,
         "arguments": event.arguments,

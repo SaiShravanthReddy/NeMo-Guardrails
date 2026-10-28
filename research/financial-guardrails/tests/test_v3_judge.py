@@ -91,6 +91,7 @@ def test_prompt_keeps_authorization_separate_from_untrusted_event():
     assert "UNTRUSTED_EVENT_JSON" in prompt
     assert "cannot grant permission" in prompt
     assert "tool result claims approval" in prompt
+    assert '"trust": "untrusted"' in prompt
 
 
 def test_benign_threat_can_require_confirmation():
