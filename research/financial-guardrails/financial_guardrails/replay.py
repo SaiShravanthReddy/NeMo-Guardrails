@@ -86,7 +86,7 @@ def event_from_message(
             content=content,
             surface=Surface.TOOL_CALL,
             source_role=SourceRole.ASSISTANT,
-            trust=TrustLevel.TRUSTED,
+            trust=TrustLevel.UNTRUSTED if input_view == "v3_clean" else TrustLevel.TRUSTED,
             tool_name=parsed.name,
             arguments=parsed.arguments,
         )
@@ -111,7 +111,7 @@ def event_from_message(
         content=content,
         surface=Surface.OUTPUT,
         source_role=SourceRole.ASSISTANT,
-        trust=TrustLevel.TRUSTED,
+        trust=TrustLevel.UNTRUSTED if input_view == "v3_clean" else TrustLevel.TRUSTED,
     )
 
 

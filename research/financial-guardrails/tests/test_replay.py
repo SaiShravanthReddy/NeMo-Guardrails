@@ -22,6 +22,7 @@ import pytest
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
 from financial_guardrails.judge import build_judge_prompt, load_judge_policy
 from financial_guardrails.replay import event_from_message, parse_finvault_tool_call
+from financial_guardrails.schema import TrustLevel
 
 
 def test_parses_reviewed_finvault_literal_format():
@@ -137,4 +138,5 @@ def test_v3_view_redacts_benchmark_ids_inside_messages_and_tool_arguments():
     assert event_from_message(case, user, input_view="v3_clean").content == "[Case ID: REDACTED] Check this request."
     tool_event = event_from_message(case, call, input_view="v3_clean")
     assert tool_event.arguments == {"note": "[Case ID: REDACTED]"}
+    assert tool_event.trust is TrustLevel.UNTRUSTED
     assert "harmful-example" not in tool_event.content
