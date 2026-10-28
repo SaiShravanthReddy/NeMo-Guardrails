@@ -79,6 +79,11 @@ def test_outcome_judge_returns_independent_success_score():
     assert response.outcome_score == 0.9
     assert backend.calls[0][1] == "open_lakera_v3_outcome_response"
     assert backend.calls[0][2]["additionalProperties"] is False
+    assert backend.calls[0][2]["properties"]["policy_ids"]["items"]["enum"] == [
+        "OUTCOME-ACTION",
+        "OUTCOME-DISCLOSURE",
+        "OUTCOME-HARMFUL-OUTPUT",
+    ]
 
 
 def test_outcome_judge_allows_one_repair_then_fails_closed():

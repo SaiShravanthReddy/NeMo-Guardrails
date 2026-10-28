@@ -103,6 +103,7 @@ def test_benign_threat_can_require_confirmation():
     assert result.decision is Decision.REQUIRE_CONFIRMATION
     assert backend.calls[0][1] == "open_lakera_v3_judge_response"
     assert backend.calls[0][2]["additionalProperties"] is False
+    assert "TOOL-CONFIRM" in backend.calls[0][2]["properties"]["policy_ids"]["items"]["enum"]
 
 
 def test_detected_threat_can_be_logged_without_conflating_action():
