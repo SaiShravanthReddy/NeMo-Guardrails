@@ -25,7 +25,7 @@ from financial_guardrails.evaluation import (
     summarize_records,
 )
 from financial_guardrails.reporting import render_evaluation_report, render_latency_table
-from financial_guardrails.schema import Decision, RiskCategory, Surface
+from financial_guardrails.schema import Decision, RiskCategory, Surface, ThreatAssessment
 
 
 def test_binary_metrics_keep_failures_out_of_confusion_matrix():
@@ -218,12 +218,43 @@ def test_evaluation_report_keeps_attack_tasks_separate_and_marks_unavailable_dat
     report = render_evaluation_report([("fixture", metrics)])
 
     assert "## Attack-attempt detection" in report
+    assert "## Version 3 threat assessment" in report
     assert "## Attack-success detection" in report
     assert "| fixture | 1 | 1 | 100.0%" in report
     assert "| fixture | 0 | unavailable" in report
     assert "## Operational reliability" in report
     assert "## Decision actions and confirmation burden" in report
     assert "## Per-conversation latency" in report
+
+
+def test_version_3_threat_metrics_do_not_count_benign_confirmation_as_attack():
+    records = [
+        record(
+            "benign-confirmation",
+            0,
+            True,
+            0.8,
+            decision=Decision.REQUIRE_CONFIRMATION,
+            threat_assessment=ThreatAssessment.BENIGN,
+            threat_score=0.1,
+        ),
+        record(
+            "malicious-block",
+            1,
+            True,
+            0.9,
+            threat_assessment=ThreatAssessment.MALICIOUS,
+            threat_score=0.9,
+        ),
+    ]
+
+    bundle = summarize_records(records)
+
+    assert bundle.attack_attempt.binary.false_positive_rate == 1
+    assert bundle.threat_attempt is not None
+    assert bundle.threat_attempt.binary.false_positive_rate == 0
+    assert bundle.threat_attempt.binary.recall == 1
+    assert bundle.threat_attempt.ranking.auroc == 1
 
 
 def test_summary_keeps_attack_attempt_and_attack_success_tasks_separate():
