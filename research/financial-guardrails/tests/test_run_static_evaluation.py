@@ -22,6 +22,7 @@ import json
 import sys
 
 import pytest
+from financial_guardrails.benchmark_input import redact_benchmark_case_reference
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
 from financial_guardrails.splits import assign_splits
 
@@ -101,21 +102,48 @@ def test_reviewed_group_manifest_rejects_dataset_mismatch_and_non_development_gr
     cases = tuple(
         BenchmarkCase(
             dataset_key="finvault-v5-fixed-full",
-            case_id=str(i),
+            case_id=f"case-{i}",
             label=0,
-            messages=(BenchmarkMessage(role="user", kind="message", content="ok", original_role="user", turn_index=0),),
+            messages=(
+                BenchmarkMessage(
+                    role="user",
+                    kind="message",
+                    content=f"[Case ID: case-{i}] ok-{i}",
+                    original_role="user",
+                    turn_index=0,
+                ),
+            ),
             metadata={"sidecar": {"scenario_id": str(i)}},
         )
-        for i in range(10)
+        for i in range(200)
     )
     assigned = assign_splits(cases)
-    development_group = next(item.group_id for item in assigned if item.split == "development")
+    development_ids = {item.case_id for item in assigned if item.split == "development"}
+    reviewed_cases = tuple(case for case in cases if case.case_id in development_ids)[:60]
+    development_groups = {
+        item.group_id for item in assigned if item.case_id in {case.case_id for case in reviewed_cases}
+    }
     final_group = next(item.group_id for item in assigned if item.split == "final")
     base = tmp_path / "review"
     (base / "coordinator").mkdir(parents=True)
     (base / "reviewers").mkdir()
     packet = base / "reviewers" / "blinded-traces.json"
-    packet.write_text("[]")
+    packet.write_text(
+        json.dumps(
+            [
+                {
+                    "review_id": f"R{index:03d}",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": redact_benchmark_case_reference(case.messages[0].content, case.case_id),
+                        }
+                    ],
+                }
+                for index, case in enumerate(reviewed_cases)
+            ]
+        )
+    )
     path = base / "coordinator" / "reviewed-source-groups-v3.json"
     manifest = {
         "schema_version": "1",
@@ -124,20 +152,27 @@ def test_reviewed_group_manifest_rejects_dataset_mismatch_and_non_development_gr
         "metadata_sha256": hashlib.sha256(metadata_path.read_bytes()).hexdigest(),
         "review_packet_sha256": hashlib.sha256(packet.read_bytes()).hexdigest(),
         "reviewed_case_count": 60,
-        "reviewed_group_count": 1,
-        "reviewed_source_groups": [development_group],
+        "reviewed_group_count": len(development_groups),
+        "reviewed_source_groups": sorted(development_groups),
     }
     path.write_text(json.dumps(manifest))
 
-    assert run_static_evaluation._load_reviewed_groups(
-        path, "finvault-v5-fixed-full", data_path, metadata_path, cases
-    ) == {development_group}
-    manifest["reviewed_source_groups"] = [final_group]
+    assert (
+        run_static_evaluation._load_reviewed_groups(path, "finvault-v5-fixed-full", data_path, metadata_path, cases)
+        == development_groups
+    )
+    manifest["reviewed_source_groups"] = sorted((development_groups - {next(iter(development_groups))}) | {final_group})
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match="non-development"):
         run_static_evaluation._load_reviewed_groups(path, "finvault-v5-fixed-full", data_path, metadata_path, cases)
-    manifest["reviewed_source_groups"] = [development_group]
+    manifest["reviewed_source_groups"] = sorted(development_groups)
     manifest["dataset_sha256"] = "0" * 64
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match="checksum"):
+        run_static_evaluation._load_reviewed_groups(path, "finvault-v5-fixed-full", data_path, metadata_path, cases)
+    manifest["dataset_sha256"] = hashlib.sha256(data_path.read_bytes()).hexdigest()
+    manifest["reviewed_source_groups"] = sorted(development_groups - {next(iter(development_groups))})
+    manifest["reviewed_group_count"] = len(manifest["reviewed_source_groups"])
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="do not match the cases"):
         run_static_evaluation._load_reviewed_groups(path, "finvault-v5-fixed-full", data_path, metadata_path, cases)
