@@ -27,7 +27,7 @@ from pathlib import Path
 
 from financial_guardrails.benchmark_input import InputView
 from financial_guardrails.datasets import BenchmarkCase
-from financial_guardrails.engine import PRECEDENCE, PolicyEngine
+from financial_guardrails.engine import PRECEDENCE, THREAT_PRECEDENCE, PolicyEngine
 from financial_guardrails.evaluation import EvaluationRecord
 from financial_guardrails.finvault_policy import FinVaultToolPolicyDetector
 from financial_guardrails.judge import DEFAULT_JUDGE_POLICY_PATH, PolicyJudgeDetector, load_judge_policy
@@ -166,6 +166,10 @@ def _case_record(
         outcome_score_verdicts if outcome_score_verdicts is not None else [item[2] for item in outcome_verdicts]
     )
     primary = max(findings, key=lambda item: PRECEDENCE[item[2].recommended_decision]) if findings else None
+    threat_verdicts = [item for item in verdicts if item[2].threat_assessment is not None]
+    primary_threat = (
+        max(threat_verdicts, key=lambda item: THREAT_PRECEDENCE[item[2].threat_assessment]) if threat_verdicts else None
+    )
     first_detection = min((turn for turn, _surface, _verdict, _rules in interventions), default=None)
     dangerous_turn = min(
         (
@@ -208,6 +212,11 @@ def _case_record(
         prediction=None if detector_error else bool(interventions),
         decision=primary[2].recommended_decision if primary else Decision.ALLOW,
         risk_score=max((v.risk_score for _t, _s, v, _r in verdicts if v.risk_score is not None), default=None),
+        threat_assessment=primary_threat[2].threat_assessment if primary_threat else None,
+        threat_score=max(
+            (verdict.threat_score for _turn, _surface, verdict, _rules in threat_verdicts),
+            default=None,
+        ),
         detector_error=detector_error,
         failure_code=failure_code,
         policy_ids=tuple(dict.fromkeys(policy for _t, _s, v, _r in verdicts for policy in v.policy_ids)),

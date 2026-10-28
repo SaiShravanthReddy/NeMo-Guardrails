@@ -25,7 +25,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from financial_guardrails.schema import Decision, RiskCategory, Surface
+from financial_guardrails.schema import Decision, RiskCategory, Surface, ThreatAssessment
 
 
 class BinaryMetrics(BaseModel):
@@ -126,6 +126,8 @@ class EvaluationRecord(BaseModel):
     positive_label: Literal[0, 1] = 1
     decision: Decision | None = None
     risk_score: float | None = Field(default=None, ge=0, le=1)
+    threat_assessment: ThreatAssessment | None = None
+    threat_score: float | None = Field(default=None, ge=0, le=1)
     detector_error: bool = False
     failure_code: str | None = None
     policy_ids: tuple[str, ...] = ()

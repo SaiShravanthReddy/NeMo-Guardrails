@@ -76,6 +76,12 @@ class DetectorStatus(str, Enum):
     DISABLED = "disabled"
 
 
+class ThreatAssessment(str, Enum):
+    BENIGN = "benign"
+    SUSPICIOUS = "suspicious"
+    MALICIOUS = "malicious"
+
+
 class Evidence(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -140,6 +146,14 @@ class DetectorResult(BaseModel):
     sanitized_content: str | None = None
     error_code: str | None = None
     risk_score: float | None = Field(default=None, ge=0, le=1)
+    threat_assessment: ThreatAssessment | None = None
+    threat_score: float | None = Field(default=None, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def validate_threat_fields(self):
+        if (self.threat_assessment is None) != (self.threat_score is None):
+            raise ValueError("threat assessment and threat score must be provided together")
+        return self
 
 
 class Verdict(BaseModel):
@@ -160,6 +174,14 @@ class Verdict(BaseModel):
     detector_error_codes: dict[str, str] = Field(default_factory=dict)
     content: str
     risk_score: float | None = Field(default=None, ge=0, le=1)
+    threat_assessment: ThreatAssessment | None = None
+    threat_score: float | None = Field(default=None, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def validate_threat_fields(self):
+        if (self.threat_assessment is None) != (self.threat_score is None):
+            raise ValueError("threat assessment and threat score must be provided together")
+        return self
 
     @property
     def intervened(self) -> bool:
