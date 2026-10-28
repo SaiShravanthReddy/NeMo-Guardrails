@@ -230,10 +230,17 @@ was frozen, on 2026-10-24.
   folds and recompute Version 1 metrics on identical remaining cases. Local
   exclusion and a rules-only fold smoke test pass; live matched inference is
   pending.
-- [ ] Implement separate threat assessment and control action fields.
-- [ ] Implement trusted authorization context and provenance validation.
-- [ ] Add provider-enforced JSON Schema output with one semantic repair attempt.
-- [ ] Implement an independent attack-success judge and score.
+- [x] Implement separate threat assessment and control action fields, including
+  distinct threat metrics and legacy intervention reporting.
+- [x] Implement trusted authorization context and provenance validation as a
+  tested application-owned evaluator. End-to-end runner integration remains
+  pending.
+- [x] Add provider-enforced JSON Schema output with one semantic repair attempt.
+  The bounded live compatibility preflight is pending on HPG.
+- [x] Implement an independent attack-success judge, policy, and score. Runner
+  integration remains pending.
+- [ ] Integrate the Version 3 authorization, attempt judge, and outcome judge
+  into the static evaluator without changing the frozen Version 1 path.
 - [ ] Add focused offline regression and direct/NeMo agreement tests.
 - [ ] Verify pinned-vLLM structured-output support with a bounded live preflight.
 - [ ] Pass a 12-to-20-case live reliability gate before larger jobs.
