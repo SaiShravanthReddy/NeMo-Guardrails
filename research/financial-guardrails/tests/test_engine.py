@@ -19,7 +19,9 @@ from financial_guardrails.engine import PolicyEngine
 from financial_guardrails.schema import (
     Decision,
     DetectorResult,
+    Evidence,
     Mode,
+    RiskCategory,
     SecurityEvent,
     SourceRole,
     Surface,
@@ -151,6 +153,14 @@ class ThreatControlDetector:
         return DetectorResult(
             detector=self.name,
             decision=self.decision,
+            policy_ids=("INJ-01",) if self.threat is ThreatAssessment.MALICIOUS else (),
+            risk_category=RiskCategory.PROMPT_INJECTION
+            if self.threat is ThreatAssessment.MALICIOUS
+            else RiskCategory.NONE,
+            evidence=(Evidence(detector=self.name, rule_id="INJ-01", summary="attack evidence"),)
+            if self.threat is ThreatAssessment.MALICIOUS
+            else (),
+            explanation="attack evidence" if self.threat is ThreatAssessment.MALICIOUS else "",
             threat_assessment=self.threat,
             threat_score=self.score,
         )
@@ -168,6 +178,8 @@ def test_threat_assessment_is_independent_from_control_action():
     assert benign_confirmation.recommended_decision is Decision.REQUIRE_CONFIRMATION
     assert malicious_observation.threat_assessment is ThreatAssessment.MALICIOUS
     assert malicious_observation.recommended_decision is Decision.ALLOW
+    assert malicious_observation.policy_ids == ("INJ-01",)
+    assert malicious_observation.evidence[0].rule_id == "INJ-01"
 
 
 def test_threat_fields_must_be_supplied_together():

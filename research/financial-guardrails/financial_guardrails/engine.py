@@ -109,6 +109,11 @@ class PolicyEngine:
             content = ""
 
         findings = [result for result in results if result.decision is not Decision.ALLOW]
+        audit_findings = [
+            result
+            for result in results
+            if result.decision is not Decision.ALLOW or result.threat_assessment is not ThreatAssessment.BENIGN
+        ]
         decision = recommended
         if selected_mode is Mode.DETECT and findings:
             decision = Decision.LOG_ONLY
@@ -127,10 +132,14 @@ class PolicyEngine:
             mode=selected_mode,
             decision=decision,
             recommended_decision=recommended,
-            policy_ids=tuple(dict.fromkeys(policy for result in findings for policy in result.policy_ids)),
-            risk_category=primary.risk_category if primary else RiskCategory.NONE,
-            evidence=tuple(item for result in findings for item in result.evidence),
-            explanation=primary.explanation if primary else "No configured policy matched.",
+            policy_ids=tuple(dict.fromkeys(policy for result in audit_findings for policy in result.policy_ids)),
+            risk_category=(primary or primary_threat).risk_category
+            if (primary or primary_threat)
+            else RiskCategory.NONE,
+            evidence=tuple(item for result in audit_findings for item in result.evidence),
+            explanation=(primary or primary_threat).explanation
+            if (primary or primary_threat)
+            else "No configured policy matched.",
             detector_error=any(result.status is DetectorStatus.ERROR for result in results),
             detector_statuses={result.detector: result.status for result in results},
             detector_error_codes={
