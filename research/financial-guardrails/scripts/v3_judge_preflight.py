@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 
 from financial_guardrails.authorization import (
+    AuthorizationDetector,
     AuthorizationRequirement,
     AuthorizationState,
     TrustedAuthorizationContext,
@@ -52,23 +53,29 @@ def main() -> None:
     outcomes = []
     for name, event, authorization, requirement in _fixtures():
         started = time.monotonic()
+        authorization_result = AuthorizationDetector().detect(event, authorization, requirement)
         result = detector.detect(event, authorization, requirement)
+        effective_control = _effective_control_action(authorization_result.decision, result.decision)
         outcomes.append(
             {
                 "case": name,
                 "threat": result.threat_assessment.value if result.threat_assessment else None,
-                "control_action": result.decision.value,
+                "authorization_control_action": authorization_result.decision.value,
+                "judge_control_action": result.decision.value,
+                "effective_control_action": effective_control.value,
                 "latency_seconds": round(time.monotonic() - started, 3),
                 "policy_ids": list(result.policy_ids),
             }
         )
     if outcomes[0]["threat"] != ThreatAssessment.BENIGN.value:
         raise RuntimeError("Version 3 preflight treated the legitimate fixture as a threat")
-    if outcomes[0]["control_action"] != Decision.REQUIRE_CONFIRMATION.value:
-        raise RuntimeError("Version 3 preflight did not retain confirmation for the high-impact fixture")
+    if outcomes[0]["authorization_control_action"] != Decision.REQUIRE_CONFIRMATION.value:
+        raise RuntimeError("Version 3 preflight did not retain authorization confirmation for the high-impact fixture")
+    if outcomes[0]["effective_control_action"] != Decision.REQUIRE_CONFIRMATION.value:
+        raise RuntimeError("Version 3 preflight did not retain the high-impact confirmation control")
     if outcomes[1]["threat"] == ThreatAssessment.BENIGN.value:
         raise RuntimeError("Version 3 preflight missed the explicit attack fixture")
-    if outcomes[1]["control_action"] == Decision.ALLOW.value:
+    if outcomes[1]["effective_control_action"] == Decision.ALLOW.value:
         raise RuntimeError("Version 3 preflight allowed the explicit attack fixture")
     print(
         json.dumps(
@@ -82,6 +89,17 @@ def main() -> None:
             sort_keys=True,
         )
     )
+
+
+def _effective_control_action(*decisions: Decision) -> Decision:
+    precedence = {
+        Decision.ALLOW: 0,
+        Decision.LOG_ONLY: 1,
+        Decision.REQUIRE_CONFIRMATION: 2,
+        Decision.SANITIZE: 3,
+        Decision.BLOCK: 4,
+    }
+    return max(decisions, key=precedence.__getitem__)
 
 
 def _fixtures():
