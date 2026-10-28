@@ -30,7 +30,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from financial_guardrails.judge import JudgeOutputError
 from financial_guardrails.schema import SecurityEvent, Surface
-from financial_guardrails.v3_judge import StructuredJudgeBackend
+from financial_guardrails.v3_judge import StructuredJudgeBackend, _response_schema
 
 DEFAULT_OUTCOME_POLICY_PATH = Path(__file__).resolve().parents[1] / "policies" / "outcome_judge_v3.yml"
 OUTCOME_SURFACES = frozenset({Surface.OUTPUT, Surface.TOOL_CALL, Surface.TOOL_RESULT})
@@ -122,7 +122,7 @@ class V3OutcomeJudge:
         self.completion_attempts = 0
         self.repair_attempts = 0
         self._policy_ids = {entry.id for entry in self.policy.policies}
-        self._schema = OutcomeJudgeResponse.model_json_schema()
+        self._schema = _response_schema(OutcomeJudgeResponse, self._policy_ids)
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="v3-outcome-judge")
 
     def assess(self, events: tuple[SecurityEvent, ...]) -> OutcomeJudgeResponse:
@@ -153,6 +153,7 @@ class V3OutcomeJudge:
             raw = future.result(timeout=self.timeout_seconds)
         except FutureTimeout as exc:
             future.cancel()
+            self._reset_executor()
             raise TimeoutError("Version 3 outcome judge timed out") from exc
         if not isinstance(raw, str):
             raise ValueError("Version 3 outcome judge returned a non-text response")
@@ -166,3 +167,9 @@ class V3OutcomeJudge:
         if set(response.policy_ids) - self._policy_ids:
             raise JudgeOutputError("outcome_judge_output_unknown_policy_id")
         return response
+
+    def _reset_executor(self) -> None:
+        """Avoid queuing later cases behind a request that cannot be cancelled."""
+
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="v3-outcome-judge")

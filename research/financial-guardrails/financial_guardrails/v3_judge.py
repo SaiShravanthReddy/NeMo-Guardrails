@@ -64,6 +64,8 @@ class V3JudgeResponse(BaseModel):
         finding = self.threat_assessment is not ThreatAssessment.BENIGN or self.control_action is not Decision.ALLOW
         if finding and (not self.policy_ids or self.risk_category is RiskCategory.NONE):
             raise ValueError("threat or control findings require policy IDs and a risk category")
+        if finding and (not self.evidence_summary.strip() or not self.explanation.strip()):
+            raise ValueError("threat or control findings require evidence and an explanation")
         if not finding and (self.policy_ids or self.risk_category is not RiskCategory.NONE):
             raise ValueError("benign allow responses cannot contain policy findings")
         if self.control_action is Decision.SANITIZE and self.sanitized_content is None:
@@ -123,7 +125,7 @@ class V3PolicyJudgeDetector:
         self._policy_ids = {entry.id for entry in policy.policies}
         self._policy_categories = {entry.id: entry.category for entry in policy.policies}
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="v3-policy-judge")
-        self._schema = V3JudgeResponse.model_json_schema()
+        self._schema = _response_schema(V3JudgeResponse, self._policy_ids)
 
     def detect(
         self,
@@ -159,6 +161,7 @@ class V3PolicyJudgeDetector:
             raw = future.result(timeout=self.timeout_seconds)
         except FutureTimeout as exc:
             future.cancel()
+            self._reset_executor()
             raise TimeoutError("Version 3 policy judge timed out") from exc
         if not isinstance(raw, str):
             raise ValueError("Version 3 policy judge returned a non-text response")
@@ -201,3 +204,17 @@ class V3PolicyJudgeDetector:
             threat_assessment=response.threat_assessment,
             threat_score=response.threat_score,
         )
+
+    def _reset_executor(self) -> None:
+        """Avoid queuing later cases behind a request that cannot be cancelled."""
+
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="v3-policy-judge")
+
+
+def _response_schema(response_model: type[BaseModel], policy_ids: set[str]) -> dict[str, Any]:
+    """Build the provider schema with its valid policy IDs closed over this policy file."""
+
+    schema = response_model.model_json_schema()
+    schema["properties"]["policy_ids"]["items"] = {"enum": sorted(policy_ids), "type": "string"}
+    return schema
