@@ -5,7 +5,7 @@
 #SBATCH --partition=hpg-turin
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=16G
 #SBATCH --time=02:00:00
 #SBATCH --output=logs/judge-preflight-%j.out
 #SBATCH --error=logs/judge-preflight-%j.err
@@ -19,6 +19,12 @@ PROJECT_PYTHON="${PROJECT_ROOT}/.venv/bin/python"
 MODEL_ID="Qwen/Qwen3-8B-AWQ"
 MODEL_REVISION="4da05a8edb55c6046cce958586c33b61da07bb79"
 SERVER_LOG="${PROJECT_ROOT}/logs/vllm-${SLURM_JOB_ID}.log"
+V3_PREFLIGHT="${V3_PREFLIGHT:-0}"
+
+[[ "${V3_PREFLIGHT}" == "0" || "${V3_PREFLIGHT}" == "1" ]] || {
+  echo "V3_PREFLIGHT must be 0 or 1" >&2
+  exit 2
+}
 
 test -x "${VLLM_BIN}"
 test -x "${NINJA_BIN}"
@@ -58,4 +64,8 @@ for _attempt in $(seq 1 120); do
 done
 
 curl --fail --silent http://127.0.0.1:8000/health >/dev/null
-"${PROJECT_PYTHON}" -m scripts.judge_preflight --backend hipergator --timeout 120
+if [[ "${V3_PREFLIGHT}" == "1" ]]; then
+  "${PROJECT_PYTHON}" -m scripts.v3_judge_preflight --backend hipergator --timeout 120
+else
+  "${PROJECT_PYTHON}" -m scripts.judge_preflight --backend hipergator --timeout 120
+fi
