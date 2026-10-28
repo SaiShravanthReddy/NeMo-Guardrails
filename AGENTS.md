@@ -24,19 +24,20 @@ skill discovery.
 - Open or submit an issue directly (using `gh` or the GitHub API, not browser
   automation) only when the operator explicitly directs it; a new issue has
   nothing to pre-check, so no triage or assignment gate applies.
-- Push a branch, or open or submit a PR, directly (using `gh` or the GitHub API,
-  not browser automation) only when the operator explicitly directs it and a
-  read-only API check confirms the linked issue is triaged and assigned to you:
-  its `labels` mark it triaged and its `assignees` include your authenticated
-  login (compare `gh api repos/{owner}/{repo}/issues/{number}` against
-  `gh api user --jq .login`). Otherwise stop at draft text. When submitting,
-  still follow the issue/PR templates, title conventions, DCO sign-off, and
-  review-readiness rules.
+- For `research/financial-guardrails/` on the active research branch, the
+  repository owner authorizes Codex to make frequent signed-off commits and
+  push tested changes to `origin` without a GitHub issue or assignment. Do not
+  push secrets, generated private data, unvalidated changes, or changes outside
+  this research scope. Opening or submitting a PR still requires explicit
+  operator direction.
 - Opportunistic refactoring in service of an assigned change is welcome: keep
   it small, local, and within that change's scope. Standalone refactor PRs and
   broad restructuring (module reshuffles, sweeping renames, architectural
   overhauls) are maintainer-led; do not implement them without an approved
   proposal and assignment. See `CONTRIBUTING.md`.
+- The owner-approved Version 3 protocol is an approved research plan for
+  `research/financial-guardrails/`; implement its scoped components without a
+  separate issue, retaining the required tests, validation, and privacy checks.
 - Never edit `CHANGELOG.md` or `CHANGELOG-Colang.md` manually.
 - Do not commit secrets, credentials, or sensitive provider data, and do not
   fabricate results, approvals, or citations. See `AI_POLICY.md` Safety and
