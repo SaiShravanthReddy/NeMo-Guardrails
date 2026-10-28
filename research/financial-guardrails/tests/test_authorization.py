@@ -23,6 +23,8 @@ from financial_guardrails.authorization import (
     AuthorizationRequirement,
     AuthorizationState,
     TrustedAuthorizationContext,
+    TrustedConfirmationGrant,
+    authorization_action_fingerprint,
 )
 from financial_guardrails.schema import Decision, SecurityEvent, SourceRole, Surface, TrustLevel
 
@@ -53,7 +55,7 @@ def _context(**overrides) -> TrustedAuthorizationContext:
         "allowed_resource_ids": {"acct-1"},
         "transaction_limit": Decimal("100.00"),
         "completed_prerequisite_ids": {"policy-verified"},
-        "trusted_confirmation_event_ids": {"ui-confirmation-1"},
+        "trusted_confirmation_grants": (),
     }
     values.update(overrides)
     return TrustedAuthorizationContext(**values)
@@ -69,6 +71,14 @@ def _requirement(**overrides) -> AuthorizationRequirement:
     }
     values.update(overrides)
     return AuthorizationRequirement(**values)
+
+
+def _confirmed_context(event: SecurityEvent, requirement: AuthorizationRequirement):
+    grant = TrustedConfirmationGrant(
+        event_id="ui-confirmation-1",
+        action_fingerprint=authorization_action_fingerprint(event, requirement),
+    )
+    return _context(trusted_confirmation_grants=(grant,))
 
 
 def test_scoped_read_is_allowed():
@@ -87,7 +97,10 @@ def test_high_impact_action_requires_then_accepts_trusted_confirmation():
     assert detector.detect(_call(), _context(), _requirement()).decision is Decision.REQUIRE_CONFIRMATION
 
     confirmed = _call(authorized_by_event_ids=("ui-confirmation-1",))
-    assert detector.detect(confirmed, _context(), _requirement()).decision is Decision.ALLOW
+    requirement = _requirement()
+    assert (
+        detector.detect(confirmed, _confirmed_context(confirmed, requirement), requirement).decision is Decision.ALLOW
+    )
 
 
 def test_untrusted_approval_text_cannot_grant_confirmation():
@@ -114,7 +127,7 @@ def test_unknown_context_never_silently_allows():
         allowed_resource_ids=set(),
         transaction_limit=None,
         completed_prerequisite_ids=set(),
-        trusted_confirmation_event_ids=set(),
+        trusted_confirmation_grants=(),
     )
 
     consequential = AuthorizationDetector().detect(_call(), unknown, _requirement())
@@ -146,6 +159,44 @@ def test_scope_limit_and_prerequisite_violations_block():
     assert detector.detect(outside_scope, _context(), _requirement()).policy_ids == ("AUTH-RESOURCE",)
     assert detector.detect(over_limit, _context(), _requirement()).policy_ids == ("AUTH-LIMIT",)
     assert detector.detect(_call(), missing_prerequisite, _requirement()).policy_ids == ("AUTH-PREREQUISITE",)
+
+
+def test_missing_or_malformed_required_resource_blocks():
+    detector = AuthorizationDetector()
+
+    missing = _call(arguments={"amount": "50.00"})
+    malformed = _call(arguments={"account_id": ["acct-1"], "amount": "50.00"})
+
+    assert detector.detect(missing, _context(), _requirement()).policy_ids == ("AUTH-RESOURCE",)
+    assert detector.detect(malformed, _context(), _requirement()).policy_ids == ("AUTH-RESOURCE",)
+
+
+def test_known_transaction_limit_without_value_does_not_allow():
+    context = _context(transaction_limit_state=AuthorizationState.KNOWN, transaction_limit=None)
+
+    result = AuthorizationDetector().detect(_call(), context, _requirement())
+
+    assert result.decision is Decision.REQUIRE_CONFIRMATION
+    assert result.policy_ids == ("AUTH-LIMIT-UNKNOWN",)
+
+
+def test_confirmation_for_different_action_does_not_authorize_call():
+    requirement = _requirement()
+    other = _call(arguments={"account_id": "acct-1", "amount": "25.00"})
+    grant = TrustedConfirmationGrant(
+        event_id="ui-confirmation-1",
+        action_fingerprint=authorization_action_fingerprint(other, requirement),
+    )
+    proposed = _call(authorized_by_event_ids=("ui-confirmation-1",))
+
+    result = AuthorizationDetector().detect(
+        proposed,
+        _context(trusted_confirmation_grants=(grant,)),
+        requirement,
+    )
+
+    assert result.decision is Decision.REQUIRE_CONFIRMATION
+    assert result.policy_ids == ("AUTH-CONFIRM",)
 
 
 def test_non_tool_events_are_ignored():
