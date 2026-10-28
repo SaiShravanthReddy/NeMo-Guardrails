@@ -17,6 +17,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from decimal import Decimal, InvalidOperation
 from enum import Enum
 
@@ -28,6 +30,15 @@ from financial_guardrails.schema import Decision, DetectorResult, Evidence, Risk
 class AuthorizationState(str, Enum):
     KNOWN = "known"
     UNKNOWN = "unknown"
+
+
+class TrustedConfirmationGrant(BaseModel):
+    """Application-issued confirmation bound to one exact proposed action."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    event_id: str = Field(min_length=1)
+    action_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class TrustedAuthorizationContext(BaseModel):
@@ -45,7 +56,7 @@ class TrustedAuthorizationContext(BaseModel):
     allowed_resource_ids: frozenset[str] = Field(default_factory=frozenset)
     transaction_limit: Decimal | None = Field(default=None, ge=0)
     completed_prerequisite_ids: frozenset[str] = Field(default_factory=frozenset)
-    trusted_confirmation_event_ids: frozenset[str] = Field(default_factory=frozenset)
+    trusted_confirmation_grants: tuple[TrustedConfirmationGrant, ...] = ()
 
 
 class AuthorizationRequirement(BaseModel):
@@ -79,13 +90,17 @@ class AuthorizationDetector:
                 "AUTH-OPERATION",
                 "The trusted application context does not authorize this tool operation.",
             )
-        resources = {
-            value
-            for name in requirement.resource_argument_names
-            for value in (event.arguments.get(name),)
-            if isinstance(value, str)
-        }
-        if resources and context.resource_scope_state is AuthorizationState.UNKNOWN:
+        resources: set[str] = set()
+        for name in requirement.resource_argument_names:
+            value = event.arguments.get(name)
+            if not isinstance(value, str) or not value:
+                return self._result(
+                    Decision.BLOCK,
+                    "AUTH-RESOURCE",
+                    "A required resource identifier is missing or malformed.",
+                )
+            resources.add(value)
+        if requirement.resource_argument_names and context.resource_scope_state is AuthorizationState.UNKNOWN:
             return self._unknown(requirement, "AUTH-RESOURCE-UNKNOWN", "Authorized resource scope is unavailable.")
         if resources - context.allowed_resource_ids:
             return self._result(
@@ -101,9 +116,9 @@ class AuthorizationDetector:
                 "AUTH-PREREQUISITE",
                 "A trusted prerequisite has not completed.",
             )
-        if requirement.amount_argument_name and context.transaction_limit_state is AuthorizationState.UNKNOWN:
-            return self._unknown(requirement, "AUTH-LIMIT-UNKNOWN", "The trusted transaction limit is unavailable.")
-        if requirement.amount_argument_name and context.transaction_limit is not None:
+        if requirement.amount_argument_name:
+            if context.transaction_limit_state is AuthorizationState.UNKNOWN or context.transaction_limit is None:
+                return self._unknown(requirement, "AUTH-LIMIT-UNKNOWN", "The trusted transaction limit is unavailable.")
             amount = self._amount(event.arguments.get(requirement.amount_argument_name))
             if amount is None or amount > context.transaction_limit:
                 return self._result(
@@ -118,8 +133,13 @@ class AuthorizationDetector:
                     "AUTH-CONFIRM",
                     "A trusted application confirmation is required for this high-impact action.",
                 )
-            trusted_confirmations = set(event.authorized_by_event_ids) & context.trusted_confirmation_event_ids
-            if not trusted_confirmations:
+            fingerprint = authorization_action_fingerprint(event, requirement)
+            trusted_confirmations = {
+                grant.event_id
+                for grant in context.trusted_confirmation_grants
+                if grant.action_fingerprint == fingerprint
+            }
+            if not set(event.authorized_by_event_ids) & trusted_confirmations:
                 return self._result(
                     Decision.REQUIRE_CONFIRMATION,
                     "AUTH-CONFIRM",
@@ -156,3 +176,15 @@ class AuthorizationDetector:
             ),
             explanation=explanation,
         )
+
+
+def authorization_action_fingerprint(event: SecurityEvent, requirement: AuthorizationRequirement) -> str:
+    """Return a stable digest binding confirmation to the complete proposed action."""
+
+    payload = {
+        "arguments": event.arguments,
+        "operation": requirement.operation,
+        "tool_name": event.tool_name,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
