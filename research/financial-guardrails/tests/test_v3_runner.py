@@ -18,6 +18,7 @@
 
 from financial_guardrails.authorization import AuthorizationRequirement, AuthorizationState, TrustedAuthorizationContext
 from financial_guardrails.engine import PolicyEngine
+from financial_guardrails.outcome_judge import TrustedOutcomeContext
 from financial_guardrails.schema import (
     Decision,
     DetectorResult,
@@ -27,7 +28,7 @@ from financial_guardrails.schema import (
     ThreatAssessment,
     TrustLevel,
 )
-from financial_guardrails.v3_runner import V3EventEvaluator
+from financial_guardrails.v3_runner import V3EventEvaluator, V3OutcomeEvaluator
 
 
 class RecordingResolver:
@@ -52,6 +53,24 @@ class RecordingJudge:
             threat_assessment=ThreatAssessment.BENIGN,
             threat_score=0.1,
         )
+
+
+class RecordingOutcomeResolver:
+    def __init__(self):
+        self.conversation_ids = []
+
+    def resolve(self, conversation_id):
+        self.conversation_ids.append(conversation_id)
+        return TrustedOutcomeContext(executed_action_event_ids={"opaque:tool:1"})
+
+
+class RecordingOutcomeJudge:
+    def __init__(self):
+        self.calls = []
+
+    def assess(self, events, trusted_context):
+        self.calls.append((events, trusted_context))
+        return "outcome"
 
 
 def _tool_event():
@@ -129,3 +148,15 @@ def test_unresolved_event_routes_to_judge_and_keeps_threat_fields():
     assert result.verdict.threat_assessment is ThreatAssessment.BENIGN
     assert resolver.event_ids == ["opaque:input:2"]
     assert len(judge.events) == 1
+
+
+def test_outcome_evaluator_uses_only_opaque_conversation_id_for_trusted_context():
+    resolver = RecordingOutcomeResolver()
+    judge = RecordingOutcomeJudge()
+    evaluator = V3OutcomeEvaluator(outcome_resolver=resolver, outcome_judge=judge)
+
+    result = evaluator.assess("opaque:conversation:1", (_tool_event(),))
+
+    assert result == "outcome"
+    assert resolver.conversation_ids == ["opaque:conversation:1"]
+    assert judge.calls[0][1].executed_action_event_ids == {"opaque:tool:1"}
