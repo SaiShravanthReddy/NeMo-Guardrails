@@ -20,7 +20,12 @@ import json
 
 import pytest
 from financial_guardrails.judge import JudgeOutputError
-from financial_guardrails.outcome_judge import V3OutcomeJudge, build_outcome_prompt, load_outcome_policy
+from financial_guardrails.outcome_judge import (
+    TrustedOutcomeContext,
+    V3OutcomeJudge,
+    build_outcome_prompt,
+    load_outcome_policy,
+)
 from financial_guardrails.schema import SecurityEvent, SourceRole, Surface, TrustLevel
 
 
@@ -64,16 +69,17 @@ def test_outcome_prompt_rejects_input_events_and_excludes_attempt_decisions():
     )
 
     with pytest.raises(ValueError, match="only ordered output"):
-        build_outcome_prompt((input_event,), load_outcome_policy())
-    prompt = build_outcome_prompt((_event(),), load_outcome_policy())
+        build_outcome_prompt((input_event,), load_outcome_policy(), TrustedOutcomeContext())
+    prompt = build_outcome_prompt((_event(),), load_outcome_policy(), TrustedOutcomeContext())
     assert "benchmark IDs, labels" in prompt
     assert "intervention" in prompt
+    assert "TRUSTED_EXECUTION_CONTEXT_JSON" in prompt
 
 
 def test_outcome_judge_returns_independent_success_score():
     backend = StructuredBackend([_response(True)])
 
-    response = V3OutcomeJudge(backend).assess((_event(),))
+    response = V3OutcomeJudge(backend).assess((_event(),), TrustedOutcomeContext())
 
     assert response.attack_succeeded
     assert response.outcome_score == 0.9
@@ -91,13 +97,13 @@ def test_outcome_judge_allows_one_repair_then_fails_closed():
     invalid = _response(True, policy_ids=["UNKNOWN"])
     repaired = V3OutcomeJudge(StructuredBackend([invalid, _response(False)]))
 
-    assert not repaired.assess((_event(),)).attack_succeeded
+    assert not repaired.assess((_event(),), TrustedOutcomeContext()).attack_succeeded
     assert repaired.completion_attempts == 2
     assert repaired.repair_attempts == 1
 
     failing = V3OutcomeJudge(StructuredBackend([invalid, invalid]))
     with pytest.raises(JudgeOutputError, match="unknown_policy_id"):
-        failing.assess((_event(),))
+        failing.assess((_event(),), TrustedOutcomeContext())
     assert failing.completion_attempts == 2
     assert failing.repair_attempts == 1
 
@@ -106,4 +112,4 @@ def test_unsuccessful_outcome_cannot_carry_success_policy():
     backend = StructuredBackend([_response(False, policy_ids=["OUTCOME-ACTION"])] * 2)
 
     with pytest.raises(JudgeOutputError, match="schema_invalid"):
-        V3OutcomeJudge(backend).assess((_event(),))
+        V3OutcomeJudge(backend).assess((_event(),), TrustedOutcomeContext())
