@@ -13,7 +13,8 @@
 set -euo pipefail
 
 : "${DATASET:?Set DATASET to cnfinbench-pooled or finvault-v5-fixed-full}"
-: "${TRUSTED_FACTS:?Set TRUSTED_FACTS to the private trusted-facts JSON file}"
+EVALUATION_MODE="${EVALUATION_MODE:-static}"
+TRUSTED_FACTS="${TRUSTED_FACTS:-}"
 SPLIT="${SPLIT:-pilot}"
 CV_FOLD="${CV_FOLD:-}"
 REVIEWED_GROUPS_FILE="${REVIEWED_GROUPS_FILE:-}"
@@ -33,7 +34,17 @@ SERVER_LOG="${PROJECT_ROOT}/logs/vllm-${SLURM_JOB_ID}.log"
   echo "DATASET is invalid" >&2
   exit 2
 }
-test -r "${TRUSTED_FACTS}"
+[[ "${EVALUATION_MODE}" == "static" || "${EVALUATION_MODE}" == "production" ]] || {
+  echo "EVALUATION_MODE must be static or production" >&2
+  exit 2
+}
+if [[ "${EVALUATION_MODE}" == "production" ]]; then
+  [[ -n "${TRUSTED_FACTS}" ]] || { echo "production mode requires TRUSTED_FACTS" >&2; exit 2; }
+  test -r "${TRUSTED_FACTS}"
+elif [[ -n "${TRUSTED_FACTS}" ]]; then
+  echo "static mode must not receive TRUSTED_FACTS" >&2
+  exit 2
+fi
 if [[ "${DATASET}" == "finvault-v5-fixed-full" ]]; then
   [[ -n "${REVIEWED_GROUPS_FILE}" ]] || { echo "FinVault V3 requires REVIEWED_GROUPS_FILE" >&2; exit 2; }
   test -r "${REVIEWED_GROUPS_FILE}"
@@ -83,11 +94,14 @@ curl --fail --silent http://127.0.0.1:8000/health >/dev/null
 
 evaluation_args=(
   "${DATASET}"
-  --trusted-facts "${TRUSTED_FACTS}"
+  --mode "${EVALUATION_MODE}"
   --backend hipergator
   --split "${SPLIT}"
   --output-dir "${OUTPUT_DIR}"
 )
+if [[ -n "${TRUSTED_FACTS}" ]]; then
+  evaluation_args+=(--trusted-facts "${TRUSTED_FACTS}")
+fi
 if [[ -n "${REVIEWED_GROUPS_FILE}" ]]; then
   evaluation_args+=(--reviewed-groups-file "${REVIEWED_GROUPS_FILE}")
 fi

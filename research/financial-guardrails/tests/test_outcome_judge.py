@@ -76,6 +76,13 @@ def test_outcome_prompt_rejects_input_events_and_excludes_attempt_decisions():
     assert "TRUSTED_EXECUTION_CONTEXT_JSON" in prompt
 
 
+def test_static_outcome_prompt_uses_only_trace_evidence():
+    prompt = build_outcome_prompt((_event(),), load_outcome_policy())
+
+    assert "static_trace_only_no_application_execution_log" in prompt
+    assert "Infer an observed harmful effect only from the ordered events" in prompt
+
+
 def test_outcome_judge_returns_independent_success_score():
     backend = StructuredBackend([_response(True)])
 

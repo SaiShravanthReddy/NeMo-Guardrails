@@ -1,13 +1,19 @@
 # Version 3 Trusted Facts Contract
 
-Version 3 separates untrusted benchmark replay from application-owned facts.
-The replay never treats a user message, tool result, benchmark label, case ID,
-or recorded tool call as proof that an action was authorized or executed.
+Version 3 has two distinct operating modes:
+
+- **Static benchmark replay** receives only the cleaned conversation trace. It
+  never receives benchmark labels, case metadata, or application facts.
+- **Production integration** may additionally receive application-owned
+  authorization and execution facts through the contract below.
+
+Neither mode treats a user message, tool result, benchmark label, case ID, or
+recorded tool call as proof that an action was authorized or executed.
 
 ## Required source
 
-Before an HPG evaluation, an application owner must produce one private JSON
-file with:
+Before a **production-integration** evaluation, an application owner must
+produce one private JSON file with:
 
 - one authorization fact for every selected tool-call opaque ID; and
 - one outcome fact for every selected conversation containing output, tool-call,
@@ -63,15 +69,25 @@ derived from benchmark labels or trace text. Do not commit the file.
 the replay. The application-side mapping from its own records to this ID is
 private and must not be committed.
 
-## Local gate before HPG
+## Static benchmark mode
 
-`scripts.run_v3_static_evaluation` validates this coverage before it creates a
-model backend. Missing facts therefore stop locally and consume no GPU time.
+Static FinVault and CNFinBench replays use `--mode static` (the default). The
+judge receives the ordered, cleaned conversation as untrusted evidence. Dataset
+labels are retained only after inference for scoring. Static outcome monitoring
+therefore estimates whether the trace shows an observed harmful effect; it does
+not claim verified real-world execution.
+
+## Production gate before HPG
+
+`scripts.run_v3_static_evaluation --mode production` validates this coverage
+before it creates a model backend. Missing facts therefore stop locally and
+consume no GPU time.
 
 ```bash
 # Run on HPG after the private facts file exists.
 uv run --locked python -m scripts.run_v3_static_evaluation \
   finvault-v5-fixed-full \
+  --mode production \
   --backend hipergator \
   --trusted-facts /private/path/to/trusted-facts.json \
   --reviewed-groups-file /private/path/to/reviewed-source-groups.json \

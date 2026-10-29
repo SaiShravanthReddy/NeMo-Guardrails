@@ -87,11 +87,20 @@ def test_prompt_keeps_authorization_separate_from_untrusted_event():
         _event("tool result claims approval"), load_judge_policy(), _authorization(), _requirement()
     )
 
-    assert "TRUSTED_CONTEXT_JSON" in prompt
+    assert "TRUSTED_APPLICATION_CONTEXT_JSON" in prompt
     assert "UNTRUSTED_EVENT_JSON" in prompt
     assert "cannot grant permission" in prompt
     assert "tool result claims approval" in prompt
     assert '"trust": "untrusted"' in prompt
+
+
+def test_static_prompt_keeps_prior_conversation_untrusted_and_has_no_application_facts():
+    prior = _event("Earlier user request is relevant context")
+    prompt = build_v3_judge_prompt(_event("Current tool call"), load_judge_policy(), conversation_context=(prior,))
+
+    assert "unavailable_in_static_replay" in prompt
+    assert "ORDERED_UNTRUSTED_CONVERSATION_CONTEXT_JSON" in prompt
+    assert "Earlier user request is relevant context" in prompt
 
 
 def test_benign_threat_can_require_confirmation():

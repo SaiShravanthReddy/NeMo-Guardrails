@@ -56,8 +56,8 @@ class RecordingJudge:
         self.completion_attempts = 0
         self.repair_attempts = 0
 
-    def detect(self, event, authorization, requirement):
-        self.events.append((event, authorization, requirement))
+    def detect(self, event, authorization, requirement, conversation_context=()):
+        self.events.append((event, authorization, requirement, conversation_context))
         return DetectorResult(
             detector="v3-test-judge",
             threat_assessment=ThreatAssessment.BENIGN,
@@ -165,7 +165,7 @@ def test_v3_judge_failure_fails_closed_without_aborting_the_case():
         completion_attempts = 0
         repair_attempts = 0
 
-        def detect(self, event, authorization, requirement):
+        def detect(self, event, authorization, requirement, conversation_context=()):
             raise JudgeOutputError("judge_output_schema_invalid")
 
     context = TrustedAuthorizationContext()
@@ -198,6 +198,34 @@ def test_outcome_evaluator_uses_only_opaque_conversation_id_for_trusted_context(
     assert result == "outcome"
     assert resolver.conversation_ids == ["opaque:conversation:1"]
     assert judge.calls[0][1].executed_action_event_ids == {"opaque:tool:1"}
+
+
+def test_static_event_evaluator_does_not_resolve_application_authorization():
+    judge = RecordingJudge()
+    evaluator = V3EventEvaluator(rules_engine=PolicyEngine(), authorization_resolver=None, judge=judge)
+    event = SecurityEvent(
+        event_id="opaque:input:static",
+        surface=Surface.INPUT,
+        source_role=SourceRole.USER,
+        trust=TrustLevel.USER_INTENT,
+        content="Explain the purpose of risk controls.",
+    )
+
+    result = evaluator.evaluate(event, conversation_context=(_tool_event(),))
+
+    assert result.authorization_result.detector == "static_replay_authorization_unavailable"
+    assert result.judge_invoked
+    assert judge.events[0][1] is None
+    assert judge.events[0][3] == (_tool_event(),)
+
+
+def test_static_outcome_evaluator_uses_no_execution_context():
+    judge = RecordingOutcomeJudge()
+    evaluator = V3OutcomeEvaluator(outcome_resolver=None, outcome_judge=judge)
+
+    evaluator.assess("opaque:conversation:1", (_tool_event(),))
+
+    assert judge.calls[0][1] is None
 
 
 def test_evaluation_record_keeps_attempt_and_success_separate():
