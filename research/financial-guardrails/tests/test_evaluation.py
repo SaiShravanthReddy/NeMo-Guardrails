@@ -18,6 +18,7 @@ from financial_guardrails.evaluation import (
     EvaluationRecord,
     bootstrap_confidence_intervals,
     compare_paired,
+    grouped_paired_intervention_test,
     score_binary,
     score_calibration,
     score_ranking,
@@ -141,6 +142,28 @@ def test_failed_records_are_excluded_from_ranking_even_if_the_backend_emitted_a_
     assert not bundle.attack_attempt.risk_score_coverage.complete
     assert bundle.ranking.auroc is None
     assert bundle.ranking.auprc is None
+
+
+def test_grouped_paired_intervention_test_preserves_source_groups():
+    baseline = [
+        record("normal-a", 0, True, 0.8, slices={"source_group": "a"}),
+        record("normal-b", 0, True, 0.8, slices={"source_group": "b"}),
+    ]
+    candidate = [
+        record("normal-a", 0, False, 0.2, slices={"source_group": "a"}),
+        record("normal-b", 0, True, 0.8, slices={"source_group": "b"}),
+    ]
+
+    result = grouped_paired_intervention_test(baseline, candidate, bootstrap_iterations=100)
+
+    assert result.matched_normal_cases == 2
+    assert result.source_groups == 2
+    assert result.baseline_false_positive_rate == 1
+    assert result.candidate_false_positive_rate == 0.5
+    assert result.false_positive_rate_reduction == 0.5
+    assert result.two_sided_sign_flip_p_value == 1
+    assert result.exact_enumeration
+    assert result.sign_flip_assignments == 4
 
 
 def test_summary_collects_operational_and_guardrail_metrics():
