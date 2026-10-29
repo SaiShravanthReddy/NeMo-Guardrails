@@ -16,10 +16,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+from types import SimpleNamespace
+
 import pytest
 from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.evaluation import EvaluationRecord
-from scripts.report_v3_selection import _attach_source_groups, _matched_records
+from scripts.report_v3_selection import _attach_source_groups, _matched_records, _validate_artifact_dataset
 
 
 def _case(case_id, scenario_id):
@@ -59,3 +61,15 @@ def test_selection_report_rejects_inconsistent_source_group_or_labels():
     candidate = (_record("case-a", False).model_copy(update={"label": 1}),)
     with pytest.raises(ValueError, match="labels"):
         _matched_records(baseline, candidate)
+
+
+def test_selection_report_rejects_wrong_canonical_dataset_checksums(tmp_path):
+    data = tmp_path / "data.json"
+    metadata = tmp_path / "metadata.json"
+    data.write_text("[]", encoding="utf-8")
+    metadata.write_text("{}", encoding="utf-8")
+    adapter = SimpleNamespace(data_path=data, metadata_path=metadata)
+    artifact = SimpleNamespace(manifest=SimpleNamespace(dataset_sha256="0" * 64, metadata_sha256="0" * 64))
+
+    with pytest.raises(ValueError, match="data checksum"):
+        _validate_artifact_dataset(artifact, adapter)
