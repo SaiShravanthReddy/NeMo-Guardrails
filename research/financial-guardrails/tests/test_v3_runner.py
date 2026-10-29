@@ -153,7 +153,7 @@ def test_unresolved_event_routes_to_judge_and_keeps_threat_fields():
     assert result.verdict.decision is Decision.ALLOW
     assert result.judge_invoked
     assert result.verdict.threat_assessment is ThreatAssessment.BENIGN
-    assert resolver.event_ids == ["opaque:input:2"]
+    assert resolver.event_ids == []
     assert len(judge.events) == 1
 
 
@@ -245,8 +245,7 @@ def test_v3_replay_uses_clean_events_and_resumes_from_checkpoint(tmp_path):
     assert first[0].prediction is False
     assert first[0].input_view == "v3_clean"
     assert first[0].case_id == "harmful-opaque-case"
-    assert resolver.event_ids[0].startswith("v3:")
-    assert "harmful" not in resolver.event_ids[0]
+    assert resolver.event_ids == []
     assert len(judge.events) == 1
 
 

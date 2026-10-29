@@ -91,7 +91,11 @@ class V3EventEvaluator:
         self.authorization_detector = AuthorizationDetector()
 
     def evaluate(self, event: SecurityEvent) -> V3EventResult:
-        authorization, requirement = self.authorization_resolver.resolve(event.event_id)
+        if event.surface is Surface.TOOL_CALL:
+            authorization, requirement = self.authorization_resolver.resolve(event.event_id)
+        else:
+            authorization = TrustedAuthorizationContext()
+            requirement = AuthorizationRequirement(operation="message")
         authorization_result = self.authorization_detector.detect(event, authorization, requirement)
         deterministic = self.rules_engine.evaluate(event, mode=Mode.ENFORCE)
         if _intervenes(authorization_result.decision) or _intervenes(deterministic.recommended_decision):
