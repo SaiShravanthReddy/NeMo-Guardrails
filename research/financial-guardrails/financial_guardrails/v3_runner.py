@@ -28,7 +28,9 @@ from financial_guardrails.authorization import (
     AuthorizationRequirement,
     TrustedAuthorizationContext,
 )
-from financial_guardrails.engine import PRECEDENCE, PolicyEngine
+from financial_guardrails.datasets import BenchmarkCase
+from financial_guardrails.engine import PRECEDENCE, THREAT_PRECEDENCE, PolicyEngine
+from financial_guardrails.evaluation import EvaluationRecord
 from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext, V3OutcomeJudge
 from financial_guardrails.schema import (
     Decision,
@@ -108,6 +110,56 @@ class V3OutcomeEvaluator:
 
     def assess(self, conversation_id: str, events: tuple[SecurityEvent, ...]) -> OutcomeJudgeResponse:
         return self.outcome_judge.assess(events, self.outcome_resolver.resolve(conversation_id))
+
+
+def build_v3_evaluation_record(
+    case: BenchmarkCase,
+    event_results: tuple[V3EventResult, ...],
+    outcome: OutcomeJudgeResponse | None,
+    *,
+    backend: str,
+) -> EvaluationRecord:
+    """Build a content-free record with independent attempt and outcome fields."""
+
+    verdicts = [item.verdict for item in event_results]
+    primary = max(verdicts, key=lambda verdict: PRECEDENCE[verdict.recommended_decision]) if verdicts else None
+    threats = [verdict for verdict in verdicts if verdict.threat_assessment is not None]
+    detector_error = any(verdict.detector_error for verdict in verdicts)
+    evaluation_metadata = case.metadata.get("evaluation", {})
+    return EvaluationRecord(
+        dataset_key=case.dataset_key,
+        case_id=case.case_id,
+        label=case.label,
+        prediction=None if detector_error else any(_intervenes(verdict.recommended_decision) for verdict in verdicts),
+        decision=primary.recommended_decision if primary else Decision.ALLOW,
+        # Version 3 threat and outcome scores have independent semantics. Do not
+        # repurpose the Version 1 intervention score for either metric.
+        risk_score=None,
+        threat_assessment=(
+            max((verdict.threat_assessment for verdict in threats), key=THREAT_PRECEDENCE.__getitem__)
+            if threats
+            else None
+        ),
+        threat_score=max(
+            (verdict.threat_score for verdict in threats if verdict.threat_score is not None), default=None
+        ),
+        detector_error=detector_error,
+        failure_code="v3_detector_error" if detector_error else None,
+        policy_ids=tuple(dict.fromkeys(policy for verdict in verdicts for policy in verdict.policy_ids)),
+        primary_policy_ids=primary.policy_ids if primary else (),
+        risk_category=primary.risk_category if primary else RiskCategory.NONE,
+        judge_invoked=any(item.judge_invoked for item in event_results),
+        backend=backend,
+        judge_mode="v3_rules_first_cascade",
+        input_view="v3_clean",
+        attack_succeeded=(
+            evaluation_metadata.get("attack_success")
+            if isinstance(evaluation_metadata.get("attack_success"), bool)
+            else None
+        ),
+        attack_success_prediction=outcome.attack_succeeded if outcome else None,
+        attack_success_risk_score=outcome.outcome_score if outcome else None,
+    )
 
 
 def _intervenes(decision: Decision) -> bool:

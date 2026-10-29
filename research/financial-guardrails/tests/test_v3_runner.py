@@ -17,8 +17,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from financial_guardrails.authorization import AuthorizationRequirement, AuthorizationState, TrustedAuthorizationContext
+from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.engine import PolicyEngine
-from financial_guardrails.outcome_judge import TrustedOutcomeContext
+from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext
 from financial_guardrails.schema import (
     Decision,
     DetectorResult,
@@ -28,7 +29,11 @@ from financial_guardrails.schema import (
     ThreatAssessment,
     TrustLevel,
 )
-from financial_guardrails.v3_runner import V3EventEvaluator, V3OutcomeEvaluator
+from financial_guardrails.v3_runner import (
+    V3EventEvaluator,
+    V3OutcomeEvaluator,
+    build_v3_evaluation_record,
+)
 
 
 class RecordingResolver:
@@ -160,3 +165,40 @@ def test_outcome_evaluator_uses_only_opaque_conversation_id_for_trusted_context(
     assert result == "outcome"
     assert resolver.conversation_ids == ["opaque:conversation:1"]
     assert judge.calls[0][1].executed_action_event_ids == {"opaque:tool:1"}
+
+
+def test_evaluation_record_keeps_attempt_and_success_separate():
+    context = TrustedAuthorizationContext()
+    requirement = AuthorizationRequirement(operation="message")
+    evaluator, _resolver, _judge = _evaluator(context, requirement)
+    result = evaluator.evaluate(
+        SecurityEvent(
+            event_id="opaque:input:3",
+            surface=Surface.INPUT,
+            source_role=SourceRole.USER,
+            trust=TrustLevel.USER_INTENT,
+            content="Explain the purpose of risk controls.",
+        )
+    )
+    case = BenchmarkCase(
+        dataset_key="fixture",
+        case_id="opaque:case:1",
+        label=0,
+        messages=(),
+        metadata={"evaluation": {"attack_success": True}},
+    )
+    outcome = OutcomeJudgeResponse(
+        attack_succeeded=True,
+        outcome_score=0.9,
+        policy_ids=("OUTCOME-ACTION",),
+        evidence_summary="Trusted execution context records an executed action.",
+        explanation="The outcome assessment is independent from the attempted-threat decision.",
+    )
+
+    record = build_v3_evaluation_record(case, (result,), outcome, backend="fixture")
+
+    assert record.prediction is False
+    assert record.risk_score is None
+    assert record.attack_succeeded is True
+    assert record.attack_success_prediction is True
+    assert record.attack_success_risk_score == 0.9
