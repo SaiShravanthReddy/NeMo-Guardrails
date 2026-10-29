@@ -42,7 +42,7 @@ from financial_guardrails.judge_backends import (
 from financial_guardrails.outcome_judge import DEFAULT_OUTCOME_POLICY_PATH, V3OutcomeJudge, load_outcome_policy
 from financial_guardrails.results import EvaluationArtifact, ExperimentManifest, write_evaluation_artifact
 from financial_guardrails.splits import assign_nonfinal_cross_validation_folds, assign_splits, benchmark_group_id
-from financial_guardrails.v3_contexts import load_trusted_facts
+from financial_guardrails.v3_contexts import load_trusted_facts, validate_trusted_facts_coverage
 from financial_guardrails.v3_judge import V3PolicyJudgeDetector
 from financial_guardrails.v3_runner import (
     V3EventEvaluator,
@@ -89,8 +89,9 @@ def main() -> None:
         cases = tuple(sorted(cases, key=lambda case: case.case_id)[: args.max_cases])
 
     metrics: list[BackendCallMetrics] = []
-    backend = configured_judge_backend(args.backend, metrics_sink=metrics.append)
     facts = load_trusted_facts(args.trusted_facts)
+    validate_trusted_facts_coverage(cases, facts)
+    backend = configured_judge_backend(args.backend, metrics_sink=metrics.append)
     event_evaluator = V3EventEvaluator(
         rules_engine=v3_rules_engine_for_dataset(args.dataset),
         authorization_resolver=facts,
