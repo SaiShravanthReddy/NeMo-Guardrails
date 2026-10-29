@@ -20,7 +20,11 @@
 
 from __future__ import annotations
 
+import os
+import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from financial_guardrails.authorization import (
@@ -28,10 +32,13 @@ from financial_guardrails.authorization import (
     AuthorizationRequirement,
     TrustedAuthorizationContext,
 )
+from financial_guardrails.benchmark_input import opaque_event_id
 from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.engine import PRECEDENCE, THREAT_PRECEDENCE, PolicyEngine
 from financial_guardrails.evaluation import EvaluationRecord
+from financial_guardrails.judge import JudgeOutputError
 from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext, V3OutcomeJudge
+from financial_guardrails.replay import event_from_message
 from financial_guardrails.schema import (
     Decision,
     DetectorResult,
@@ -39,6 +46,7 @@ from financial_guardrails.schema import (
     Mode,
     RiskCategory,
     SecurityEvent,
+    Surface,
     Verdict,
 )
 from financial_guardrails.v3_judge import V3PolicyJudgeDetector
@@ -112,12 +120,77 @@ class V3OutcomeEvaluator:
         return self.outcome_judge.assess(events, self.outcome_resolver.resolve(conversation_id))
 
 
+def evaluate_v3_cases(
+    cases: Iterable[BenchmarkCase],
+    *,
+    event_evaluator: V3EventEvaluator,
+    outcome_evaluator: V3OutcomeEvaluator | None,
+    backend: str,
+    checkpoint_path: str | Path | None = None,
+    progress_sink: Callable[[int, int], None] | None = None,
+) -> tuple[EvaluationRecord, ...]:
+    """Replay Version 3 with clean benchmark input and application-owned facts."""
+
+    selected_cases = tuple(cases)
+    checkpoint = Path(checkpoint_path) if checkpoint_path else None
+    existing = _read_checkpoint(checkpoint) if checkpoint and checkpoint.exists() else {}
+    expected_ids = {case.case_id for case in selected_cases}
+    if not set(existing).issubset(expected_ids):
+        raise ValueError("checkpoint contains cases outside this evaluation")
+    if any(
+        record.dataset_key != case.dataset_key
+        or record.backend != backend
+        or record.judge_mode != "v3_rules_first_cascade"
+        or record.input_view != "v3_clean"
+        for case in selected_cases
+        for record in ([existing[case.case_id]] if case.case_id in existing else [])
+    ):
+        raise ValueError("checkpoint configuration does not match this evaluation")
+
+    records = list(existing.values())
+    if progress_sink:
+        progress_sink(len(records), len(selected_cases))
+    for case in selected_cases:
+        if case.case_id in existing:
+            continue
+        started = time.monotonic()
+        try:
+            events = tuple(event_from_message(case, message, input_view="v3_clean") for message in case.messages)
+            results = tuple(event_evaluator.evaluate(event) for event in events)
+            outcome_events = tuple(
+                event for event in events if event.surface in {Surface.OUTPUT, Surface.TOOL_CALL, Surface.TOOL_RESULT}
+            )
+            outcome = None
+            outcome_error = False
+            if outcome_evaluator and outcome_events:
+                try:
+                    outcome = outcome_evaluator.assess(_opaque_conversation_id(case), outcome_events)
+                except (JudgeOutputError, TimeoutError, ValueError):
+                    outcome_error = True
+            record = build_v3_evaluation_record(
+                case,
+                results,
+                outcome,
+                backend=backend,
+                outcome_error=outcome_error,
+            ).model_copy(update={"latency_seconds": time.monotonic() - started, "slices": _slices(case)})
+        except (JudgeOutputError, TimeoutError, ValueError):
+            record = _v3_error_record(case, backend=backend, latency_seconds=time.monotonic() - started)
+        records.append(record)
+        if checkpoint:
+            _append_checkpoint(checkpoint, record)
+        if progress_sink:
+            progress_sink(len(records), len(selected_cases))
+    return tuple(records)
+
+
 def build_v3_evaluation_record(
     case: BenchmarkCase,
     event_results: tuple[V3EventResult, ...],
     outcome: OutcomeJudgeResponse | None,
     *,
     backend: str,
+    outcome_error: bool = False,
 ) -> EvaluationRecord:
     """Build a content-free record with independent attempt and outcome fields."""
 
@@ -159,7 +232,71 @@ def build_v3_evaluation_record(
         ),
         attack_success_prediction=outcome.attack_succeeded if outcome else None,
         attack_success_risk_score=outcome.outcome_score if outcome else None,
+        attack_success_detector_error=outcome_error,
+        outcome_score_detector_error=outcome_error,
     )
+
+
+def _opaque_conversation_id(case: BenchmarkCase) -> str:
+    return opaque_event_id(case.dataset_key, case.case_id, -1)
+
+
+def _slices(case: BenchmarkCase) -> dict[str, str]:
+    record_metadata = case.metadata.get("record", {})
+    sidecar = case.metadata.get("sidecar", {})
+    return {
+        key: str(value)
+        for key, value in {
+            "risk_type": record_metadata.get("risk_type"),
+            "behavior_mode": record_metadata.get("behavior_mode"),
+            "ambiguous": record_metadata.get("ambiguous"),
+            "case_type": sidecar.get("case_type"),
+            "outcome": sidecar.get("outcome"),
+        }.items()
+        if value is not None
+    }
+
+
+def _v3_error_record(case: BenchmarkCase, *, backend: str, latency_seconds: float) -> EvaluationRecord:
+    return EvaluationRecord(
+        dataset_key=case.dataset_key,
+        case_id=case.case_id,
+        label=case.label,
+        prediction=None,
+        decision=None,
+        detector_error=True,
+        failure_code="v3_detector_error",
+        backend=backend,
+        judge_mode="v3_rules_first_cascade",
+        input_view="v3_clean",
+        latency_seconds=latency_seconds,
+        slices=_slices(case),
+    )
+
+
+def _read_checkpoint(path: Path) -> dict[str, EvaluationRecord]:
+    records: dict[str, EvaluationRecord] = {}
+    with path.open(encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            try:
+                record = EvaluationRecord.model_validate_json(line)
+            except Exception as exc:
+                raise ValueError(f"invalid checkpoint record at line {line_number}") from exc
+            if record.case_id in records:
+                raise ValueError("checkpoint contains duplicate case IDs")
+            records[record.case_id] = record
+    return records
+
+
+def _append_checkpoint(path: Path, record: EvaluationRecord) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(record.model_dump_json())
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def _intervenes(decision: Decision) -> bool:
