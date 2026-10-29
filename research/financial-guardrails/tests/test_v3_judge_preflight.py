@@ -26,3 +26,7 @@ def test_authorization_confirmation_is_preserved_over_judge_allow():
 
 def test_judge_block_is_preserved_over_authorization_allow():
     assert _effective_control_action(Decision.ALLOW, Decision.BLOCK) is Decision.BLOCK
+
+
+def test_deterministic_block_is_preserved_over_judge_allow():
+    assert _effective_control_action(Decision.ALLOW, Decision.BLOCK, Decision.ALLOW) is Decision.BLOCK
