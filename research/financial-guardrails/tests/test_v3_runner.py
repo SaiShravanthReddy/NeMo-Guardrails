@@ -52,6 +52,8 @@ class RecordingResolver:
 class RecordingJudge:
     def __init__(self):
         self.events = []
+        self.completion_attempts = 0
+        self.repair_attempts = 0
 
     def detect(self, event, authorization, requirement):
         self.events.append((event, authorization, requirement))
@@ -251,6 +253,12 @@ def test_v3_replay_uses_clean_events_and_resumes_from_checkpoint(tmp_path):
 
 def test_v3_replay_records_outcome_error_without_losing_attempt_result():
     class FailingOutcomeEvaluator:
+        class OutcomeJudge:
+            completion_attempts = 0
+            repair_attempts = 0
+
+        outcome_judge = OutcomeJudge()
+
         def assess(self, conversation_id, events):
             raise TimeoutError
 

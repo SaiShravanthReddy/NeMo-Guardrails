@@ -38,6 +38,7 @@ from financial_guardrails.engine import PRECEDENCE, THREAT_PRECEDENCE, PolicyEng
 from financial_guardrails.evaluation import EvaluationRecord
 from financial_guardrails.finvault_v3_policy import FinVaultV3BoundaryDetector
 from financial_guardrails.judge import JudgeOutputError
+from financial_guardrails.judge_backends import BackendCallMetrics
 from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext, V3OutcomeJudge
 from financial_guardrails.replay import event_from_message
 from financial_guardrails.schema import (
@@ -143,6 +144,7 @@ def evaluate_v3_cases(
     backend: str,
     checkpoint_path: str | Path | None = None,
     progress_sink: Callable[[int, int], None] | None = None,
+    backend_metrics: list[BackendCallMetrics] | None = None,
 ) -> tuple[EvaluationRecord, ...]:
     """Replay Version 3 with clean benchmark input and application-owned facts."""
 
@@ -163,12 +165,20 @@ def evaluate_v3_cases(
         raise ValueError("checkpoint configuration does not match this evaluation")
 
     records = list(existing.values())
+    metrics = backend_metrics if backend_metrics is not None else []
     if progress_sink:
         progress_sink(len(records), len(selected_cases))
     for case in selected_cases:
         if case.case_id in existing:
             continue
         started = time.monotonic()
+        metric_start = len(metrics)
+        event_attempt_start = event_evaluator.judge.completion_attempts
+        event_repair_start = event_evaluator.judge.repair_attempts
+        outcome_attempt_start = (
+            outcome_evaluator.outcome_judge.completion_attempts if outcome_evaluator is not None else 0
+        )
+        outcome_repair_start = outcome_evaluator.outcome_judge.repair_attempts if outcome_evaluator is not None else 0
         try:
             events = tuple(event_from_message(case, message, input_view="v3_clean") for message in case.messages)
             results = tuple(event_evaluator.evaluate(event) for event in events)
@@ -188,6 +198,28 @@ def evaluate_v3_cases(
                 outcome,
                 backend=backend,
                 outcome_error=outcome_error,
+                judge_attempts=(
+                    event_evaluator.judge.completion_attempts
+                    - event_attempt_start
+                    + (
+                        outcome_evaluator.outcome_judge.completion_attempts - outcome_attempt_start
+                        if outcome_evaluator is not None
+                        else 0
+                    )
+                ),
+                judge_backend_calls=len(metrics[metric_start:]),
+                judge_retries=(
+                    event_evaluator.judge.repair_attempts
+                    - event_repair_start
+                    + (
+                        outcome_evaluator.outcome_judge.repair_attempts - outcome_repair_start
+                        if outcome_evaluator is not None
+                        else 0
+                    )
+                ),
+                judge_invoked=any(item.judge_invoked for item in results) or outcome is not None or outcome_error,
+                rules_intervened=any(_intervenes(item.deterministic_result.recommended_decision) for item in results),
+                calls=metrics[metric_start:],
             ).model_copy(update={"latency_seconds": time.monotonic() - started, "slices": _slices(case)})
         except (JudgeOutputError, TimeoutError, ValueError):
             record = _v3_error_record(case, backend=backend, latency_seconds=time.monotonic() - started)
@@ -206,6 +238,12 @@ def build_v3_evaluation_record(
     *,
     backend: str,
     outcome_error: bool = False,
+    judge_attempts: int = 0,
+    judge_backend_calls: int = 0,
+    judge_retries: int = 0,
+    judge_invoked: bool | None = None,
+    rules_intervened: bool = False,
+    calls: list[BackendCallMetrics] | None = None,
 ) -> EvaluationRecord:
     """Build a content-free record with independent attempt and outcome fields."""
 
@@ -236,7 +274,14 @@ def build_v3_evaluation_record(
         policy_ids=tuple(dict.fromkeys(policy for verdict in verdicts for policy in verdict.policy_ids)),
         primary_policy_ids=primary.policy_ids if primary else (),
         risk_category=primary.risk_category if primary else RiskCategory.NONE,
-        judge_invoked=any(item.judge_invoked for item in event_results),
+        judge_invoked=any(item.judge_invoked for item in event_results) if judge_invoked is None else judge_invoked,
+        judge_attempts=judge_attempts,
+        judge_backend_calls=judge_backend_calls,
+        rules_intervened=rules_intervened,
+        input_tokens=_sum_int(call.input_tokens for call in calls or ()),
+        output_tokens=_sum_int(call.output_tokens for call in calls or ()),
+        estimated_cost_usd=_sum_float(call.estimated_cost_usd for call in calls or ()),
+        retries=judge_retries,
         backend=backend,
         judge_mode="v3_rules_first_cascade",
         input_view="v3_clean",
@@ -287,6 +332,16 @@ def _v3_error_record(case: BenchmarkCase, *, backend: str, latency_seconds: floa
         latency_seconds=latency_seconds,
         slices=_slices(case),
     )
+
+
+def _sum_int(values: Iterable[int | None]) -> int | None:
+    present = [value for value in values if value is not None]
+    return sum(present) if present else None
+
+
+def _sum_float(values: Iterable[float | None]) -> float | None:
+    present = [value for value in values if value is not None]
+    return sum(present) if present else None
 
 
 def _read_checkpoint(path: Path) -> dict[str, EvaluationRecord]:
