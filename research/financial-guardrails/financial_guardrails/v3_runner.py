@@ -45,6 +45,7 @@ from financial_guardrails.schema import (
     Decision,
     DetectorResult,
     DetectorStatus,
+    Evidence,
     Mode,
     RiskCategory,
     SecurityEvent,
@@ -107,7 +108,10 @@ class V3EventEvaluator:
                 deterministic_result=deterministic,
                 judge_invoked=False,
             )
-        judge_result = self.judge.detect(event, authorization, requirement)
+        try:
+            judge_result = self.judge.detect(event, authorization, requirement)
+        except (JudgeOutputError, TimeoutError, RuntimeError, ValueError) as exc:
+            judge_result = _failed_judge_result(event, self.rules_engine, exc)
         return V3EventResult(
             verdict=_merge(event, self.rules_engine, authorization_result, deterministic, judge_result),
             authorization_result=authorization_result,
@@ -377,6 +381,40 @@ def _intervenes(decision: Decision) -> bool:
     return decision in {Decision.BLOCK, Decision.SANITIZE, Decision.REQUIRE_CONFIRMATION}
 
 
+def _failed_judge_result(event: SecurityEvent, engine: PolicyEngine, exc: Exception) -> DetectorResult:
+    high_impact = event.surface is Surface.TOOL_CALL or event.tool_name in {
+        *engine.config.tools.confirmation_required,
+        *engine.config.tools.denied,
+    }
+    decision = engine.config.failure_policy.high_impact if high_impact else engine.config.failure_policy.ordinary
+    return DetectorResult(
+        detector="v3_policy_judge",
+        status=DetectorStatus.ERROR,
+        decision=decision,
+        policy_ids=("DETECTOR-ERROR",),
+        risk_category=RiskCategory.DETECTOR_FAILURE,
+        evidence=(
+            Evidence(
+                detector="v3_policy_judge",
+                rule_id="DETECTOR-ERROR",
+                summary="Version 3 policy judge failed after bounded validation.",
+            ),
+        ),
+        explanation="The Version 3 policy judge did not return a usable decision.",
+        error_code=_judge_error_code(exc),
+    )
+
+
+def _judge_error_code(exc: Exception) -> str:
+    if isinstance(exc, TimeoutError):
+        return "detector_timeout"
+    if isinstance(exc, JudgeOutputError):
+        return exc.code
+    if "backend request failed" in str(exc).lower():
+        return "judge_backend_request_failed"
+    return "detector_failure"
+
+
 def _merge(
     event: SecurityEvent,
     engine: PolicyEngine,
@@ -421,6 +459,11 @@ def _merge(
         explanation=primary.explanation if primary else "No configured policy matched.",
         detector_error=any(result.status is DetectorStatus.ERROR for result in detector_results),
         detector_statuses={result.detector: result.status for result in detector_results},
+        detector_error_codes={
+            result.detector: result.error_code or "detector_failure"
+            for result in detector_results
+            if result.status is DetectorStatus.ERROR
+        },
         content="" if recommended is Decision.BLOCK else event.content,
         threat_assessment=next(
             (result.threat_assessment for result in reversed(audit) if result.threat_assessment is not None), None
