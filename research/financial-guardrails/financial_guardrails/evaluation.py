@@ -21,6 +21,7 @@ import math
 import random
 from collections import Counter
 from collections.abc import Sequence
+from itertools import product
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -290,6 +291,22 @@ class PairedComparison(BaseModel):
     policy_agreement_rate: float | None
     category_agreement_rate: float | None
     metric_deltas_second_minus_first: dict[str, float | None]
+
+
+class GroupedPairedInterventionTest(BaseModel):
+    """Paired normal-case intervention comparison clustered by source group."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    matched_normal_cases: int = Field(ge=1)
+    source_groups: int = Field(ge=1)
+    baseline_false_positive_rate: float = Field(ge=0, le=1)
+    candidate_false_positive_rate: float = Field(ge=0, le=1)
+    false_positive_rate_reduction: float = Field(ge=-1, le=1)
+    two_sided_sign_flip_p_value: float = Field(ge=0, le=1)
+    confidence_interval: ConfidenceInterval
+    exact_enumeration: bool
+    sign_flip_assignments: int = Field(ge=1)
 
 
 class ConfidenceInterval(BaseModel):
@@ -726,6 +743,95 @@ def compare_paired(
         metric_deltas_second_minus_first={
             name: _difference(getattr(second_metrics, name), getattr(first_metrics, name)) for name in delta_names
         },
+    )
+
+
+def grouped_paired_intervention_test(
+    baseline: Sequence[EvaluationRecord],
+    candidate: Sequence[EvaluationRecord],
+    *,
+    group_slice_key: str = "source_group",
+    seed: str = "open-lakera-v3-paired-v1",
+    bootstrap_iterations: int = 10_000,
+    sampled_assignments: int = 100_000,
+) -> GroupedPairedInterventionTest:
+    """Compare normal-case intervention rates with group-preserving resampling.
+
+    The statistic is the case-weighted baseline-minus-candidate intervention
+    rate. Every pair in a source group changes sign together under the null.
+    """
+
+    if bootstrap_iterations < 100:
+        raise ValueError("bootstrap_iterations must be at least 100")
+    if sampled_assignments < 100:
+        raise ValueError("sampled_assignments must be at least 100")
+    baseline_by_id = _unique_completed_records(baseline)
+    candidate_by_id = _unique_completed_records(candidate)
+    group_sums: dict[str, tuple[int, int, int]] = {}
+    for case_id in sorted(baseline_by_id.keys() & candidate_by_id.keys()):
+        first = baseline_by_id[case_id]
+        second = candidate_by_id[case_id]
+        if first.label != second.label or first.positive_label != second.positive_label:
+            raise ValueError("paired records must have matching labels and positive labels")
+        if first.label == first.positive_label:
+            continue
+        first_group = first.slices.get(group_slice_key)
+        second_group = second.slices.get(group_slice_key)
+        if not first_group or first_group != second_group:
+            raise ValueError("paired normal records require matching source-group slices")
+        difference = int(bool(first.prediction)) - int(bool(second.prediction))
+        baseline_intervention = int(bool(first.prediction))
+        previous_difference, previous_baseline, previous_count = group_sums.get(first_group, (0, 0, 0))
+        group_sums[first_group] = (
+            previous_difference + difference,
+            previous_baseline + baseline_intervention,
+            previous_count + 1,
+        )
+    if not group_sums:
+        raise ValueError("no matched completed normal records are available")
+    group_values = tuple(group_sums.values())
+    total_cases = sum(count for _difference, _baseline, count in group_values)
+    observed_numerator = sum(difference for difference, _baseline, _count in group_values)
+    observed = observed_numerator / total_cases
+    baseline_fpr = sum(baseline_count for _difference, baseline_count, _count in group_values) / total_cases
+    candidate_fpr = baseline_fpr - observed
+    group_differences = [difference for difference, _baseline, _count in group_values]
+    exact = len(group_differences) <= 20
+    if exact:
+        null_statistics = [
+            sum(sign * difference for sign, difference in zip(signs, group_differences, strict=True)) / total_cases
+            for signs in product((-1, 1), repeat=len(group_differences))
+        ]
+    else:
+        rng = random.Random(seed)
+        null_statistics = [
+            sum(rng.choice((-1, 1)) * difference for difference in group_differences) / total_cases
+            for _ in range(sampled_assignments)
+        ]
+    p_value = sum(abs(value) >= abs(observed) for value in null_statistics) / len(null_statistics)
+    rng = random.Random(seed)
+    bootstrap = []
+    for _ in range(bootstrap_iterations):
+        selected = [group_values[rng.randrange(len(group_values))] for _index in range(len(group_values))]
+        selected_cases = sum(count for _difference, _baseline, count in selected)
+        bootstrap.append(sum(difference for difference, _baseline, _count in selected) / selected_cases)
+    bootstrap.sort()
+    return GroupedPairedInterventionTest(
+        matched_normal_cases=total_cases,
+        source_groups=len(group_values),
+        baseline_false_positive_rate=baseline_fpr,
+        candidate_false_positive_rate=candidate_fpr,
+        false_positive_rate_reduction=observed,
+        two_sided_sign_flip_p_value=p_value,
+        confidence_interval=ConfidenceInterval(
+            point=observed,
+            lower=_quantile(bootstrap, 0.025),
+            upper=_quantile(bootstrap, 0.975),
+            confidence_level=0.95,
+            valid_resamples=len(bootstrap),
+        ),
+        exact_enumeration=exact,
+        sign_flip_assignments=len(null_statistics),
     )
 
 
