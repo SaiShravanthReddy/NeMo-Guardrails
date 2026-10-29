@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 
 from financial_guardrails.datasets import BenchmarkCase, cnfinbench_adapter, finvault_adapter
@@ -46,6 +47,10 @@ def main() -> None:
     adapter = (
         cnfinbench_adapter(args.data_dir) if dataset_key == "cnfinbench-pooled" else finvault_adapter(args.data_dir)
     )
+    _validate_artifact_dataset(baseline_artifact, adapter)
+    _validate_artifact_dataset(candidate_artifact, adapter)
+    if dataset_key == "finvault-v5-fixed-full" and not candidate_artifact.manifest.reviewed_groups_sha256:
+        parser.error("FinVault Version 3 candidate is missing its reviewed-source-group manifest checksum")
     cases = tuple(adapter.cases())
     baseline, candidate = _matched_records(
         _attach_source_groups(baseline_artifact.records, cases),
@@ -108,6 +113,13 @@ def _attach_source_groups(
     return tuple(enriched)
 
 
+def _validate_artifact_dataset(artifact, adapter) -> None:
+    if artifact.manifest.dataset_sha256 != _sha256(adapter.data_path):
+        raise ValueError("artifact data checksum does not match the canonical dataset")
+    if artifact.manifest.metadata_sha256 != _sha256(adapter.metadata_path):
+        raise ValueError("artifact metadata checksum does not match the canonical dataset")
+
+
 def _matched_records(
     baseline: tuple[EvaluationRecord, ...], candidate: tuple[EvaluationRecord, ...]
 ) -> tuple[tuple[EvaluationRecord, ...], tuple[EvaluationRecord, ...]]:
@@ -130,6 +142,14 @@ def _matched_records(
 
 def _percent(value: float | None) -> str:
     return "unavailable" if value is None else f"{value * 100:.1f}%"
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 if __name__ == "__main__":
