@@ -195,7 +195,7 @@ def evaluate_v3_cases(
             if outcome_evaluator and outcome_events:
                 try:
                     outcome = outcome_evaluator.assess(_opaque_conversation_id(case), outcome_events)
-                except (JudgeOutputError, TimeoutError, ValueError):
+                except (JudgeOutputError, TimeoutError, RuntimeError, ValueError):
                     outcome_error = True
             record = build_v3_evaluation_record(
                 case,
