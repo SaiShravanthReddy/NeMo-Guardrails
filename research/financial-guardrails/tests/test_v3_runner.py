@@ -17,7 +17,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from financial_guardrails.authorization import AuthorizationRequirement, AuthorizationState, TrustedAuthorizationContext
-from financial_guardrails.datasets import BenchmarkCase
+from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
 from financial_guardrails.engine import PolicyEngine
 from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext
 from financial_guardrails.schema import (
@@ -33,6 +33,7 @@ from financial_guardrails.v3_runner import (
     V3EventEvaluator,
     V3OutcomeEvaluator,
     build_v3_evaluation_record,
+    evaluate_v3_cases,
 )
 
 
@@ -202,3 +203,84 @@ def test_evaluation_record_keeps_attempt_and_success_separate():
     assert record.attack_succeeded is True
     assert record.attack_success_prediction is True
     assert record.attack_success_risk_score == 0.9
+
+
+def test_v3_replay_uses_clean_events_and_resumes_from_checkpoint(tmp_path):
+    context = TrustedAuthorizationContext()
+    requirement = AuthorizationRequirement(operation="message")
+    evaluator, resolver, judge = _evaluator(context, requirement)
+    case = BenchmarkCase(
+        dataset_key="fixture",
+        case_id="harmful-opaque-case",
+        label=1,
+        messages=(
+            BenchmarkMessage(
+                role="user",
+                kind="message",
+                content="Explain the purpose of risk controls.",
+                original_role="user",
+                turn_index=0,
+            ),
+        ),
+    )
+    checkpoint = tmp_path / "v3.checkpoint.jsonl"
+
+    first = evaluate_v3_cases(
+        (case,),
+        event_evaluator=evaluator,
+        outcome_evaluator=None,
+        backend="fixture",
+        checkpoint_path=checkpoint,
+    )
+    second = evaluate_v3_cases(
+        (case,),
+        event_evaluator=evaluator,
+        outcome_evaluator=None,
+        backend="fixture",
+        checkpoint_path=checkpoint,
+    )
+
+    assert len(first) == len(second) == 1
+    assert first[0].prediction is False
+    assert first[0].input_view == "v3_clean"
+    assert first[0].case_id == "harmful-opaque-case"
+    assert resolver.event_ids[0].startswith("v3:")
+    assert "harmful" not in resolver.event_ids[0]
+    assert len(judge.events) == 1
+
+
+def test_v3_replay_records_outcome_error_without_losing_attempt_result():
+    class FailingOutcomeEvaluator:
+        def assess(self, conversation_id, events):
+            raise TimeoutError
+
+    context = TrustedAuthorizationContext()
+    requirement = AuthorizationRequirement(operation="message")
+    evaluator, _resolver, _judge = _evaluator(context, requirement)
+    case = BenchmarkCase(
+        dataset_key="fixture",
+        case_id="opaque-case-with-output",
+        label=0,
+        messages=(
+            BenchmarkMessage(
+                role="assistant",
+                kind="message",
+                content="A benign response.",
+                original_role="agent",
+                turn_index=0,
+            ),
+        ),
+    )
+
+    (record,) = evaluate_v3_cases(
+        (case,),
+        event_evaluator=evaluator,
+        outcome_evaluator=FailingOutcomeEvaluator(),
+        backend="fixture",
+    )
+
+    assert record.prediction is False
+    assert not record.detector_error
+    assert record.attack_success_prediction is None
+    assert record.attack_success_detector_error
+    assert record.outcome_score_detector_error
