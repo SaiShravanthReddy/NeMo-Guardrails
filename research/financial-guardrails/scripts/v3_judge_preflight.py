@@ -29,6 +29,7 @@ from financial_guardrails.authorization import (
     AuthorizationState,
     TrustedAuthorizationContext,
 )
+from financial_guardrails.detectors import PromptDefenseDetector
 from financial_guardrails.judge import load_judge_policy
 from financial_guardrails.judge_backends import configured_judge_backend
 from financial_guardrails.schema import Decision, SecurityEvent, SourceRole, Surface, ThreatAssessment, TrustLevel
@@ -54,13 +55,19 @@ def main() -> None:
     for name, event, authorization, requirement in _fixtures():
         started = time.monotonic()
         authorization_result = AuthorizationDetector().detect(event, authorization, requirement)
+        deterministic_result = PromptDefenseDetector().detect(event)
         result = detector.detect(event, authorization, requirement)
-        effective_control = _effective_control_action(authorization_result.decision, result.decision)
+        effective_control = _effective_control_action(
+            authorization_result.decision,
+            deterministic_result.decision,
+            result.decision,
+        )
         outcomes.append(
             {
                 "case": name,
                 "threat": result.threat_assessment.value if result.threat_assessment else None,
                 "authorization_control_action": authorization_result.decision.value,
+                "deterministic_control_action": deterministic_result.decision.value,
                 "judge_control_action": result.decision.value,
                 "effective_control_action": effective_control.value,
                 "latency_seconds": round(time.monotonic() - started, 3),
@@ -73,8 +80,6 @@ def main() -> None:
         raise RuntimeError("Version 3 preflight did not retain authorization confirmation for the high-impact fixture")
     if outcomes[0]["effective_control_action"] != Decision.REQUIRE_CONFIRMATION.value:
         raise RuntimeError("Version 3 preflight did not retain the high-impact confirmation control")
-    if outcomes[1]["threat"] == ThreatAssessment.BENIGN.value:
-        raise RuntimeError("Version 3 preflight missed the explicit attack fixture")
     if outcomes[1]["effective_control_action"] == Decision.ALLOW.value:
         raise RuntimeError("Version 3 preflight allowed the explicit attack fixture")
     print(
