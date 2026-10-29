@@ -16,7 +16,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Run the isolated Version 3 static replay with external trusted facts."""
+"""Run isolated Version 3 static replay or a production-facts integration replay."""
 
 from __future__ import annotations
 
@@ -59,7 +59,8 @@ DEFAULT_V3_POLICY_PATH = Path(__file__).resolve().parents[1] / "policies" / "llm
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("dataset", choices=("cnfinbench-pooled", "finvault-v5-fixed-full"))
-    parser.add_argument("--trusted-facts", type=Path, required=True)
+    parser.add_argument("--mode", choices=("static", "production"), default="static")
+    parser.add_argument("--trusted-facts", type=Path)
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--output-dir", type=Path, default=Path("outputs"))
     parser.add_argument("--split", choices=("development", "calibration", "pilot", "final", "all"), default="pilot")
@@ -77,6 +78,12 @@ def main() -> None:
         parser.error("--max-cases must be at least 1")
     if args.dataset == "finvault-v5-fixed-full" and not args.reviewed_groups_file:
         parser.error("Version 3 FinVault replay requires --reviewed-groups-file")
+    if args.mode == "production" and args.trusted_facts is None:
+        parser.error("--mode production requires --trusted-facts")
+    if args.mode == "static" and args.trusted_facts is not None:
+        parser.error(
+            "static replay must not receive --trusted-facts; dataset labels and application facts are evaluator-only"
+        )
 
     adapter = (
         cnfinbench_adapter(args.data_dir) if args.dataset == "cnfinbench-pooled" else finvault_adapter(args.data_dir)
@@ -89,8 +96,9 @@ def main() -> None:
         cases = tuple(sorted(cases, key=lambda case: case.case_id)[: args.max_cases])
 
     metrics: list[BackendCallMetrics] = []
-    facts = load_trusted_facts(args.trusted_facts)
-    validate_trusted_facts_coverage(cases, facts)
+    facts = load_trusted_facts(args.trusted_facts) if args.trusted_facts else None
+    if facts is not None:
+        validate_trusted_facts_coverage(cases, facts)
     backend = configured_judge_backend(args.backend, metrics_sink=metrics.append)
     event_evaluator = V3EventEvaluator(
         rules_engine=v3_rules_engine_for_dataset(args.dataset),
@@ -146,7 +154,11 @@ def main() -> None:
             positive_label=1,
             generation_settings={
                 **spec.request_options,
-                "trusted_facts_sha256": _sha256(args.trusted_facts),
+                "evaluation_mode": args.mode,
+                "trusted_facts_sha256": _sha256(args.trusted_facts) if args.trusted_facts else None,
+                "outcome_evidence_mode": (
+                    "trusted_application_execution_context" if facts is not None else "static_trace_only"
+                ),
                 "outcome_policy_sha256": _sha256(DEFAULT_OUTCOME_POLICY_PATH),
             },
             software_versions={"python": platform.python_version()},
@@ -205,7 +217,8 @@ def _run_id(args, selection_name, data_path, metadata_path, reviewed_groups_sha2
         "backend": args.backend,
         "data_sha256": _sha256(data_path),
         "metadata_sha256": _sha256(metadata_path),
-        "trusted_facts_sha256": _sha256(args.trusted_facts),
+        "mode": args.mode,
+        "trusted_facts_sha256": _sha256(args.trusted_facts) if args.trusted_facts else None,
         "judge_policy_sha256": _sha256(args.judge_policy_path),
         "reviewed_groups_sha256": reviewed_groups_sha256,
         "max_cases": args.max_cases,

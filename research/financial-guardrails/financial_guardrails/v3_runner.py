@@ -16,7 +16,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Separate Version 3 event routing with application-owned authorization."""
+"""Separate Version 3 routing for static replay and application integrations."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ class V3EventEvaluator:
         self,
         *,
         rules_engine: PolicyEngine,
-        authorization_resolver: TrustedAuthorizationResolver,
+        authorization_resolver: TrustedAuthorizationResolver | None,
         judge: V3PolicyJudgeDetector,
     ):
         self.rules_engine = rules_engine
@@ -93,13 +93,18 @@ class V3EventEvaluator:
         self.judge = judge
         self.authorization_detector = AuthorizationDetector()
 
-    def evaluate(self, event: SecurityEvent) -> V3EventResult:
-        if event.surface is Surface.TOOL_CALL:
+    def evaluate(self, event: SecurityEvent, *, conversation_context: tuple[SecurityEvent, ...] = ()) -> V3EventResult:
+        if event.surface is Surface.TOOL_CALL and self.authorization_resolver is not None:
             authorization, requirement = self.authorization_resolver.resolve(event.event_id)
-        else:
+            authorization_result = self.authorization_detector.detect(event, authorization, requirement)
+        elif self.authorization_resolver is not None:
             authorization = TrustedAuthorizationContext()
             requirement = AuthorizationRequirement(operation="message")
-        authorization_result = self.authorization_detector.detect(event, authorization, requirement)
+            authorization_result = self.authorization_detector.detect(event, authorization, requirement)
+        else:
+            authorization = None
+            requirement = None
+            authorization_result = DetectorResult(detector="static_replay_authorization_unavailable")
         deterministic = self.rules_engine.evaluate(event, mode=Mode.ENFORCE)
         if _intervenes(authorization_result.decision) or _intervenes(deterministic.recommended_decision):
             return V3EventResult(
@@ -109,7 +114,7 @@ class V3EventEvaluator:
                 judge_invoked=False,
             )
         try:
-            judge_result = self.judge.detect(event, authorization, requirement)
+            judge_result = self.judge.detect(event, authorization, requirement, conversation_context)
         except (JudgeOutputError, TimeoutError, RuntimeError, ValueError) as exc:
             judge_result = _failed_judge_result(event, self.rules_engine, exc)
         return V3EventResult(
@@ -133,12 +138,13 @@ def v3_rules_engine_for_dataset(dataset_key: str) -> PolicyEngine:
 class V3OutcomeEvaluator:
     """Run independent outcome assessment with application-owned execution facts."""
 
-    def __init__(self, *, outcome_resolver: TrustedOutcomeResolver, outcome_judge: V3OutcomeJudge):
+    def __init__(self, *, outcome_resolver: TrustedOutcomeResolver | None, outcome_judge: V3OutcomeJudge):
         self.outcome_resolver = outcome_resolver
         self.outcome_judge = outcome_judge
 
     def assess(self, conversation_id: str, events: tuple[SecurityEvent, ...]) -> OutcomeJudgeResponse:
-        return self.outcome_judge.assess(events, self.outcome_resolver.resolve(conversation_id))
+        trusted_context = self.outcome_resolver.resolve(conversation_id) if self.outcome_resolver is not None else None
+        return self.outcome_judge.assess(events, trusted_context)
 
 
 def evaluate_v3_cases(
@@ -151,7 +157,7 @@ def evaluate_v3_cases(
     progress_sink: Callable[[int, int], None] | None = None,
     backend_metrics: list[BackendCallMetrics] | None = None,
 ) -> tuple[EvaluationRecord, ...]:
-    """Replay Version 3 with clean benchmark input and application-owned facts."""
+    """Replay Version 3 with clean benchmark input and optional application facts."""
 
     selected_cases = tuple(cases)
     checkpoint = Path(checkpoint_path) if checkpoint_path else None
@@ -186,7 +192,10 @@ def evaluate_v3_cases(
         outcome_repair_start = outcome_evaluator.outcome_judge.repair_attempts if outcome_evaluator is not None else 0
         try:
             events = tuple(event_from_message(case, message, input_view="v3_clean") for message in case.messages)
-            results = tuple(event_evaluator.evaluate(event) for event in events)
+            results = tuple(
+                event_evaluator.evaluate(event, conversation_context=events[:index])
+                for index, event in enumerate(events)
+            )
             outcome_events = tuple(
                 event for event in events if event.surface in {Surface.OUTPUT, Surface.TOOL_CALL, Surface.TOOL_RESULT}
             )
