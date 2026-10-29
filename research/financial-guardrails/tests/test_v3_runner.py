@@ -34,6 +34,7 @@ from financial_guardrails.v3_runner import (
     V3OutcomeEvaluator,
     build_v3_evaluation_record,
     evaluate_v3_cases,
+    v3_rules_engine_for_dataset,
 )
 
 
@@ -284,3 +285,18 @@ def test_v3_replay_records_outcome_error_without_losing_attempt_result():
     assert record.attack_success_prediction is None
     assert record.attack_success_detector_error
     assert record.outcome_score_detector_error
+
+
+def test_v3_finvault_rules_engine_keeps_known_high_impact_tool_for_authorization_layer():
+    event = SecurityEvent(
+        event_id="opaque:tool:2",
+        surface=Surface.TOOL_CALL,
+        source_role=SourceRole.ASSISTANT,
+        trust=TrustLevel.UNTRUSTED,
+        tool_name="approve_payout",
+        arguments={"case_id": "c-1", "amount": 8000},
+    )
+
+    verdict = v3_rules_engine_for_dataset("finvault-v5-fixed-full").evaluate(event)
+
+    assert verdict.decision is Decision.ALLOW
