@@ -19,7 +19,9 @@
 import json
 
 import pytest
-from financial_guardrails.v3_contexts import load_trusted_facts
+from financial_guardrails.benchmark_input import opaque_event_id
+from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
+from financial_guardrails.v3_contexts import load_trusted_facts, validate_trusted_facts_coverage
 
 
 def _bundle(*, duplicate=False):
@@ -73,3 +75,35 @@ def test_trusted_facts_reject_duplicate_identifiers(tmp_path):
 
     with pytest.raises(ValueError, match="duplicate"):
         load_trusted_facts(path)
+
+
+def test_trusted_facts_coverage_requires_every_tool_and_outcome_context(tmp_path):
+    case = BenchmarkCase(
+        dataset_key="fixture",
+        case_id="case-1",
+        label=0,
+        messages=(
+            BenchmarkMessage(
+                role="assistant",
+                kind="tool_call",
+                content="{'tool': 'approve_payout', 'args': {'case_id': 'c-1', 'amount': 1}}",
+                original_role="agent",
+                turn_index=0,
+            ),
+        ),
+    )
+    path = tmp_path / "trusted-facts.json"
+    path.write_text(json.dumps(_bundle()), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="incomplete"):
+        validate_trusted_facts_coverage((case,), load_trusted_facts(path))
+
+    event_id = opaque_event_id("fixture", "case-1", 0)
+    complete = {
+        "schema_version": "v3-trusted-facts-1",
+        "authorization_facts": [{"event_id": event_id, "authorization": {}, "requirement": {"operation": "approve"}}],
+        "outcome_facts": [{"conversation_id": opaque_event_id("fixture", "case-1", -1), "outcome": {}}],
+    }
+    path.write_text(json.dumps(complete), encoding="utf-8")
+
+    validate_trusted_facts_coverage((case,), load_trusted_facts(path))

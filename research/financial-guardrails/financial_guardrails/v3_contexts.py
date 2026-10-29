@@ -26,7 +26,11 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
 from financial_guardrails.authorization import AuthorizationRequirement, TrustedAuthorizationContext
+from financial_guardrails.benchmark_input import opaque_event_id
+from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.outcome_judge import TrustedOutcomeContext
+from financial_guardrails.replay import event_from_message
+from financial_guardrails.schema import Surface
 
 
 class TrustedAuthorizationFact(BaseModel):
@@ -81,3 +85,24 @@ def load_trusted_facts(path: str | Path) -> TrustedFactsBundle:
     if len(set(outcome_ids)) != len(outcome_ids):
         raise ValueError("trusted facts contain duplicate outcome conversation IDs")
     return bundle
+
+
+def validate_trusted_facts_coverage(cases: tuple[BenchmarkCase, ...], facts: TrustedFactsBundle) -> None:
+    """Fail locally unless every selected tool/outcome event has external facts."""
+
+    expected_authorization_ids = set()
+    expected_outcome_ids = set()
+    for case in cases:
+        events = tuple(event_from_message(case, message, input_view="v3_clean") for message in case.messages)
+        expected_authorization_ids.update(event.event_id for event in events if event.surface is Surface.TOOL_CALL)
+        if any(event.surface in {Surface.OUTPUT, Surface.TOOL_CALL, Surface.TOOL_RESULT} for event in events):
+            expected_outcome_ids.add(opaque_event_id(case.dataset_key, case.case_id, -1))
+    actual_authorization_ids = {item.event_id for item in facts.authorization_facts}
+    actual_outcome_ids = {item.conversation_id for item in facts.outcome_facts}
+    missing_authorization = expected_authorization_ids - actual_authorization_ids
+    missing_outcomes = expected_outcome_ids - actual_outcome_ids
+    if missing_authorization or missing_outcomes:
+        raise ValueError(
+            "trusted facts are incomplete for the selected replay "
+            f"(missing authorization={len(missing_authorization)}, outcomes={len(missing_outcomes)})"
+        )
