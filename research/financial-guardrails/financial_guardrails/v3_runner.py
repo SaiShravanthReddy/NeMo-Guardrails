@@ -51,6 +51,7 @@ from financial_guardrails.schema import (
     Surface,
     Verdict,
 )
+from financial_guardrails.splits import benchmark_group_id
 from financial_guardrails.v3_judge import V3PolicyJudgeDetector
 
 
@@ -304,7 +305,7 @@ def _opaque_conversation_id(case: BenchmarkCase) -> str:
 def _slices(case: BenchmarkCase) -> dict[str, str]:
     record_metadata = case.metadata.get("record", {})
     sidecar = case.metadata.get("sidecar", {})
-    return {
+    slices = {
         key: str(value)
         for key, value in {
             "risk_type": record_metadata.get("risk_type"),
@@ -315,6 +316,9 @@ def _slices(case: BenchmarkCase) -> dict[str, str]:
         }.items()
         if value is not None
     }
+    if case.dataset_key in {"cnfinbench-pooled", "finvault-v5-fixed-full"}:
+        slices["source_group"] = benchmark_group_id(case)
+    return slices
 
 
 def _v3_error_record(case: BenchmarkCase, *, backend: str, latency_seconds: float) -> EvaluationRecord:
