@@ -323,6 +323,47 @@ def test_v3_replay_records_outcome_error_without_losing_attempt_result():
     assert record.outcome_score_detector_error
 
 
+def test_v3_replay_keeps_attempt_result_when_outcome_backend_fails():
+    class FailingOutcomeEvaluator:
+        class OutcomeJudge:
+            completion_attempts = 0
+            repair_attempts = 0
+
+        outcome_judge = OutcomeJudge()
+
+        def assess(self, conversation_id, events):
+            raise RuntimeError("judge backend request failed")
+
+    context = TrustedAuthorizationContext()
+    requirement = AuthorizationRequirement(operation="message")
+    evaluator, _resolver, _judge = _evaluator(context, requirement)
+    case = BenchmarkCase(
+        dataset_key="fixture",
+        case_id="opaque-case-with-output-failure",
+        label=0,
+        messages=(
+            BenchmarkMessage(
+                role="assistant",
+                kind="message",
+                content="A benign response.",
+                original_role="agent",
+                turn_index=0,
+            ),
+        ),
+    )
+
+    (record,) = evaluate_v3_cases(
+        (case,),
+        event_evaluator=evaluator,
+        outcome_evaluator=FailingOutcomeEvaluator(),
+        backend="fixture",
+    )
+
+    assert record.prediction is False
+    assert not record.detector_error
+    assert record.outcome_score_detector_error
+
+
 def test_v3_finvault_rules_engine_keeps_known_high_impact_tool_for_authorization_layer():
     event = SecurityEvent(
         event_id="opaque:tool:2",
