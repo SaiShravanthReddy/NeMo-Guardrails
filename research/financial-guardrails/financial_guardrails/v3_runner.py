@@ -36,6 +36,7 @@ from financial_guardrails.benchmark_input import opaque_event_id
 from financial_guardrails.datasets import BenchmarkCase
 from financial_guardrails.engine import PRECEDENCE, THREAT_PRECEDENCE, PolicyEngine
 from financial_guardrails.evaluation import EvaluationRecord
+from financial_guardrails.finvault_v3_policy import FinVaultV3BoundaryDetector
 from financial_guardrails.judge import JudgeOutputError
 from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext, V3OutcomeJudge
 from financial_guardrails.replay import event_from_message
@@ -107,6 +108,16 @@ class V3EventEvaluator:
             deterministic_result=deterministic,
             judge_invoked=True,
         )
+
+
+def v3_rules_engine_for_dataset(dataset_key: str) -> PolicyEngine:
+    """Build the isolated Version 3 deterministic policy stack for one dataset."""
+
+    if dataset_key == "finvault-v5-fixed-full":
+        return PolicyEngine(additional_detectors=(FinVaultV3BoundaryDetector(),), include_tool_policy=False)
+    if dataset_key == "cnfinbench-pooled":
+        return PolicyEngine()
+    raise ValueError("unsupported Version 3 dataset")
 
 
 class V3OutcomeEvaluator:
