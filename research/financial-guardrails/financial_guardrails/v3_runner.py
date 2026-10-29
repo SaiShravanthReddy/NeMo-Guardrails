@@ -29,6 +29,7 @@ from financial_guardrails.authorization import (
     TrustedAuthorizationContext,
 )
 from financial_guardrails.engine import PRECEDENCE, PolicyEngine
+from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext, V3OutcomeJudge
 from financial_guardrails.schema import (
     Decision,
     DetectorResult,
@@ -45,6 +46,12 @@ class TrustedAuthorizationResolver(Protocol):
     """Resolve application facts using only an opaque event identifier."""
 
     def resolve(self, event_id: str) -> tuple[TrustedAuthorizationContext, AuthorizationRequirement]: ...
+
+
+class TrustedOutcomeResolver(Protocol):
+    """Resolve application execution facts using only an opaque conversation ID."""
+
+    def resolve(self, conversation_id: str) -> TrustedOutcomeContext: ...
 
 
 @dataclass(frozen=True)
@@ -90,6 +97,17 @@ class V3EventEvaluator:
             deterministic_result=deterministic,
             judge_invoked=True,
         )
+
+
+class V3OutcomeEvaluator:
+    """Run independent outcome assessment with application-owned execution facts."""
+
+    def __init__(self, *, outcome_resolver: TrustedOutcomeResolver, outcome_judge: V3OutcomeJudge):
+        self.outcome_resolver = outcome_resolver
+        self.outcome_judge = outcome_judge
+
+    def assess(self, conversation_id: str, events: tuple[SecurityEvent, ...]) -> OutcomeJudgeResponse:
+        return self.outcome_judge.assess(events, self.outcome_resolver.resolve(conversation_id))
 
 
 def _intervenes(decision: Decision) -> bool:
