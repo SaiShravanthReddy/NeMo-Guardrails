@@ -19,6 +19,7 @@
 from financial_guardrails.authorization import AuthorizationRequirement, AuthorizationState, TrustedAuthorizationContext
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
 from financial_guardrails.engine import PolicyEngine
+from financial_guardrails.judge import JudgeOutputError
 from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext
 from financial_guardrails.schema import (
     Decision,
@@ -157,6 +158,34 @@ def test_unresolved_event_routes_to_judge_and_keeps_threat_fields():
     assert result.verdict.threat_assessment is ThreatAssessment.BENIGN
     assert resolver.event_ids == []
     assert len(judge.events) == 1
+
+
+def test_v3_judge_failure_fails_closed_without_aborting_the_case():
+    class FailingJudge:
+        completion_attempts = 0
+        repair_attempts = 0
+
+        def detect(self, event, authorization, requirement):
+            raise JudgeOutputError("judge_output_schema_invalid")
+
+    context = TrustedAuthorizationContext()
+    requirement = AuthorizationRequirement(operation="message")
+    resolver = RecordingResolver(context, requirement)
+    evaluator = V3EventEvaluator(rules_engine=PolicyEngine(), authorization_resolver=resolver, judge=FailingJudge())
+    event = SecurityEvent(
+        event_id="opaque:input:failure",
+        surface=Surface.INPUT,
+        source_role=SourceRole.USER,
+        trust=TrustLevel.USER_INTENT,
+        content="Explain the purpose of risk controls.",
+    )
+
+    result = evaluator.evaluate(event)
+
+    assert result.judge_invoked
+    assert result.verdict.recommended_decision is Decision.REQUIRE_CONFIRMATION
+    assert result.verdict.detector_error
+    assert result.verdict.detector_error_codes["v3_policy_judge"] == "judge_output_schema_invalid"
 
 
 def test_outcome_evaluator_uses_only_opaque_conversation_id_for_trusted_context():
