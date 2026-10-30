@@ -19,7 +19,7 @@
 from types import SimpleNamespace
 
 from financial_guardrails.datasets import BenchmarkCase
-from scripts.run_v3_static_evaluation import _select_cases
+from scripts.run_v3_static_evaluation import _run_id, _select_cases
 
 
 def _case(case_id, scenario_id):
@@ -42,3 +42,26 @@ def test_v3_selection_uses_group_disjoint_cv_assignment_without_review_manifest(
     assert name == "cv0"
     assert selected
     assert reviewed_sha is None
+
+
+def test_v3_run_id_changes_with_code_commit(tmp_path, monkeypatch):
+    data = tmp_path / "data.json"
+    metadata = tmp_path / "metadata.json"
+    policy = tmp_path / "policy.yml"
+    for path in (data, metadata, policy):
+        path.write_text("fixture", encoding="utf-8")
+    args = SimpleNamespace(
+        dataset="finvault-v5-fixed-full",
+        backend="hipergator",
+        mode="static",
+        trusted_facts=None,
+        judge_policy_path=policy,
+        max_cases=12,
+    )
+
+    monkeypatch.setattr("scripts.run_v3_static_evaluation._git_commit", lambda: "commit-a")
+    first = _run_id(args, "cv0", data, metadata, None)
+    monkeypatch.setattr("scripts.run_v3_static_evaluation._git_commit", lambda: "commit-b")
+    second = _run_id(args, "cv0", data, metadata, None)
+
+    assert first != second
