@@ -235,8 +235,32 @@ def evaluate_v3_cases(
                 rules_intervened=any(_intervenes(item.deterministic_result.recommended_decision) for item in results),
                 calls=metrics[metric_start:],
             ).model_copy(update={"latency_seconds": time.monotonic() - started, "slices": _slices(case)})
-        except (JudgeOutputError, TimeoutError, ValueError):
-            record = _v3_error_record(case, backend=backend, latency_seconds=time.monotonic() - started)
+        except (JudgeOutputError, TimeoutError, ValueError) as exc:
+            record = _v3_error_record(
+                case,
+                backend=backend,
+                latency_seconds=time.monotonic() - started,
+                failure_code=_judge_error_code(exc),
+                judge_attempts=(
+                    event_evaluator.judge.completion_attempts
+                    - event_attempt_start
+                    + (
+                        outcome_evaluator.outcome_judge.completion_attempts - outcome_attempt_start
+                        if outcome_evaluator is not None
+                        else 0
+                    )
+                ),
+                judge_backend_calls=len(metrics[metric_start:]),
+                judge_retries=(
+                    event_evaluator.judge.repair_attempts
+                    - event_repair_start
+                    + (
+                        outcome_evaluator.outcome_judge.repair_attempts - outcome_repair_start
+                        if outcome_evaluator is not None
+                        else 0
+                    )
+                ),
+            )
         records.append(record)
         if checkpoint:
             _append_checkpoint(checkpoint, record)
@@ -334,7 +358,16 @@ def _slices(case: BenchmarkCase) -> dict[str, str]:
     return slices
 
 
-def _v3_error_record(case: BenchmarkCase, *, backend: str, latency_seconds: float) -> EvaluationRecord:
+def _v3_error_record(
+    case: BenchmarkCase,
+    *,
+    backend: str,
+    latency_seconds: float,
+    failure_code: str,
+    judge_attempts: int,
+    judge_backend_calls: int,
+    judge_retries: int,
+) -> EvaluationRecord:
     return EvaluationRecord(
         dataset_key=case.dataset_key,
         case_id=case.case_id,
@@ -342,7 +375,10 @@ def _v3_error_record(case: BenchmarkCase, *, backend: str, latency_seconds: floa
         prediction=None,
         decision=None,
         detector_error=True,
-        failure_code="v3_detector_error",
+        failure_code=failure_code,
+        judge_attempts=judge_attempts,
+        judge_backend_calls=judge_backend_calls,
+        retries=judge_retries,
         backend=backend,
         judge_mode="v3_rules_first_cascade",
         input_view="v3_clean",
