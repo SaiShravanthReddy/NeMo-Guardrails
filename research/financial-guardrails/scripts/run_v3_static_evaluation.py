@@ -215,6 +215,7 @@ def _run_id(args, selection_name, data_path, metadata_path, reviewed_groups_sha2
         "dataset": args.dataset,
         "selection": selection_name,
         "backend": args.backend,
+        "code_commit": _git_commit(),
         "data_sha256": _sha256(data_path),
         "metadata_sha256": _sha256(metadata_path),
         "mode": args.mode,
