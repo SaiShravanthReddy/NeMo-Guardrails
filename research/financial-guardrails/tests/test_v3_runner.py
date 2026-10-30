@@ -392,6 +392,47 @@ def test_v3_replay_keeps_attempt_result_when_outcome_backend_fails():
     assert record.outcome_score_detector_error
 
 
+def test_v3_replay_retains_underlying_case_error_code():
+    class FailingEventEvaluator:
+        class Judge:
+            completion_attempts = 3
+            repair_attempts = 1
+
+        judge = Judge()
+
+        def evaluate(self, event, *, conversation_context=()):
+            self.judge.completion_attempts += 3
+            self.judge.repair_attempts += 1
+            raise JudgeOutputError("judge_output_unknown_policy_id")
+
+    case = BenchmarkCase(
+        dataset_key="fixture",
+        case_id="opaque-case-with-judge-error",
+        label=1,
+        messages=(
+            BenchmarkMessage(
+                role="user",
+                kind="message",
+                content="Explain the purpose of risk controls.",
+                original_role="user",
+                turn_index=0,
+            ),
+        ),
+    )
+
+    (record,) = evaluate_v3_cases(
+        (case,),
+        event_evaluator=FailingEventEvaluator(),
+        outcome_evaluator=None,
+        backend="fixture",
+    )
+
+    assert record.detector_error
+    assert record.failure_code == "judge_output_unknown_policy_id"
+    assert record.judge_attempts == 3
+    assert record.retries == 1
+
+
 def test_v3_finvault_rules_engine_keeps_known_high_impact_tool_for_authorization_layer():
     event = SecurityEvent(
         event_id="opaque:tool:2",
