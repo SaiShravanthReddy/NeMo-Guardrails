@@ -38,5 +38,9 @@ benchmark replay.
 
 Validate the conversation-only static path locally, run a small representative
 HPG gate, then run grouped cross-validation using the existing reviewed-group
-exclusion. Report this as non-final development evidence under Amendment 1
-unless a new independent holdout is registered before inference.
+exclusion. The 60 reviewed cases span all 12 development source groups, so the
+gate and cross-validation must use `--cv-fold`, not `--split development`.
+After exclusion, the non-final cross-validation pool contains the untouched
+calibration and pilot source groups. Report this as non-final development
+evidence under Amendment 1 unless a new independent holdout is registered
+before inference.
