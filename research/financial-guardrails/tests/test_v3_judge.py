@@ -101,6 +101,7 @@ def test_static_prompt_keeps_prior_conversation_untrusted_and_has_no_application
     assert "unavailable_in_static_replay" in prompt
     assert "ORDERED_UNTRUSTED_CONVERSATION_CONTEXT_JSON" in prompt
     assert "Earlier user request is relevant context" in prompt
+    assert "Before returning, check one of these response shapes" in prompt
 
 
 def test_benign_threat_can_require_confirmation():
@@ -156,3 +157,11 @@ def test_second_semantic_error_fails_without_more_generation():
         detector.detect(_event(), _authorization(), _requirement())
     assert detector.completion_attempts == 2
     assert detector.repair_attempts == 1
+
+
+def test_missing_policy_finding_has_a_content_free_failure_code():
+    invalid = _response(threat_assessment="malicious", policy_ids=[])
+    detector = V3PolicyJudgeDetector(StructuredBackend([invalid, invalid]), load_judge_policy())
+
+    with pytest.raises(JudgeOutputError, match="missing_policy_finding"):
+        detector.detect(_event(), _authorization(), _requirement())
