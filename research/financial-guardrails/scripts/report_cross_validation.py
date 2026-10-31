@@ -30,6 +30,7 @@ _METRICS = ("f1", "balanced_accuracy", "false_positive_rate", "auroc", "auprc")
 
 def _configuration_identity(artifact: EvaluationArtifact) -> tuple[object, ...]:
     manifest = artifact.manifest
+    generation_settings = getattr(manifest, "generation_settings", {})
     return (
         manifest.dataset_key,
         manifest.backend,
@@ -41,6 +42,9 @@ def _configuration_identity(artifact: EvaluationArtifact) -> tuple[object, ...]:
         manifest.judge_policy_sha256,
         manifest.benchmark_policy_sha256,
         manifest.decision_threshold,
+        getattr(manifest, "input_view", "legacy_raw"),
+        generation_settings.get("evaluation_mode"),
+        generation_settings.get("outcome_evidence_mode"),
     )
 
 

@@ -48,3 +48,20 @@ def test_rejects_duplicate_case_ids():
 
     with pytest.raises(ValueError, match="duplicate case IDs"):
         _validate_artifacts(artifacts)
+
+
+def test_rejects_mixed_static_and_production_artifacts():
+    artifacts = tuple(_artifact(fold, f"case-{fold}") for fold in range(4))
+    for artifact in artifacts:
+        artifact.manifest.input_view = "v3_clean"
+        artifact.manifest.generation_settings = {
+            "evaluation_mode": "static",
+            "outcome_evidence_mode": "static_trace_only",
+        }
+    artifacts[3].manifest.generation_settings = {
+        "evaluation_mode": "production",
+        "outcome_evidence_mode": "trusted_application_execution_context",
+    }
+
+    with pytest.raises(ValueError, match="different configurations"):
+        _validate_artifacts(artifacts)
