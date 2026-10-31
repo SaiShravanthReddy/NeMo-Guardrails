@@ -186,6 +186,13 @@ def test_v3_judge_failure_fails_closed_without_aborting_the_case():
     assert result.verdict.recommended_decision is Decision.REQUIRE_CONFIRMATION
     assert result.verdict.detector_error
     assert result.verdict.detector_error_codes["v3_policy_judge"] == "judge_output_schema_invalid"
+    record = build_v3_evaluation_record(
+        BenchmarkCase(dataset_key="fixture", case_id="opaque:failure", label=1, messages=()),
+        (result,),
+        None,
+        backend="fixture",
+    )
+    assert record.failure_code == "judge_output_schema_invalid"
 
 
 def test_outcome_evaluator_uses_only_opaque_conversation_id_for_trusted_context():

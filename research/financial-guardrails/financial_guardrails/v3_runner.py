@@ -289,6 +289,9 @@ def build_v3_evaluation_record(
     primary = max(verdicts, key=lambda verdict: PRECEDENCE[verdict.recommended_decision]) if verdicts else None
     threats = [verdict for verdict in verdicts if verdict.threat_assessment is not None]
     detector_error = any(verdict.detector_error for verdict in verdicts)
+    detector_failure_codes = tuple(
+        dict.fromkeys(code for verdict in verdicts for code in verdict.detector_error_codes.values())
+    )
     evaluation_metadata = case.metadata.get("evaluation", {})
     return EvaluationRecord(
         dataset_key=case.dataset_key,
@@ -308,7 +311,9 @@ def build_v3_evaluation_record(
             (verdict.threat_score for verdict in threats if verdict.threat_score is not None), default=None
         ),
         detector_error=detector_error,
-        failure_code="v3_detector_error" if detector_error else None,
+        failure_code=detector_failure_codes[0]
+        if detector_failure_codes
+        else ("v3_detector_error" if detector_error else None),
         policy_ids=tuple(dict.fromkeys(policy for verdict in verdicts for policy in verdict.policy_ids)),
         primary_policy_ids=primary.policy_ids if primary else (),
         risk_category=primary.risk_category if primary else RiskCategory.NONE,
