@@ -25,7 +25,15 @@ from financial_guardrails.authorization import (
     TrustedAuthorizationContext,
 )
 from financial_guardrails.judge import JudgeOutputError, load_judge_policy
-from financial_guardrails.schema import Decision, SecurityEvent, SourceRole, Surface, ThreatAssessment, TrustLevel
+from financial_guardrails.schema import (
+    Decision,
+    RiskCategory,
+    SecurityEvent,
+    SourceRole,
+    Surface,
+    ThreatAssessment,
+    TrustLevel,
+)
 from financial_guardrails.v3_judge import V3PolicyJudgeDetector, build_v3_judge_prompt
 
 
@@ -176,3 +184,23 @@ def test_missing_response_field_has_a_content_free_failure_code():
 
     with pytest.raises(JudgeOutputError, match="missing_control_action"):
         detector.detect(_event(), _authorization(), _requirement())
+
+
+def test_policy_id_derives_the_primary_risk_category_without_repair():
+    backend = StructuredBackend([_response(risk_category="none")])
+    detector = V3PolicyJudgeDetector(backend, load_judge_policy())
+
+    result = detector.detect(_event(), _authorization(), _requirement())
+
+    assert result.risk_category is RiskCategory.AGENT_ACTION
+    assert detector.completion_attempts == 1
+    assert detector.repair_attempts == 0
+
+
+def test_blank_audit_prose_does_not_invalidate_a_policy_grounded_control():
+    backend = StructuredBackend([_response(evidence_summary="", explanation="")])
+
+    result = V3PolicyJudgeDetector(backend, load_judge_policy()).detect(_event(), _authorization(), _requirement())
+
+    assert result.decision is Decision.REQUIRE_CONFIRMATION
+    assert result.explanation == "The selected policy requires the returned control action."
