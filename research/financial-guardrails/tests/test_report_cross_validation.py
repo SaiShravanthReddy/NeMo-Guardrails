@@ -18,7 +18,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from scripts.report_cross_validation import _validate_artifacts
+from scripts.report_cross_validation import _task_table, _validate_artifacts
 
 
 def _artifact(fold: int, case_id: str):
@@ -65,3 +65,13 @@ def test_rejects_mixed_static_and_production_artifacts():
 
     with pytest.raises(ValueError, match="different configurations"):
         _validate_artifacts(artifacts)
+
+
+def test_task_table_marks_an_unavailable_optional_task():
+    artifacts = tuple(_artifact(fold, f"case-{fold}") for fold in range(4))
+    for artifact in artifacts:
+        artifact.metrics = SimpleNamespace(threat_attempt=None)
+
+    table = _task_table("Threat assessment", artifacts, "threat_attempt")
+
+    assert "| 0 | 0 | unavailable" in table
