@@ -102,6 +102,9 @@ def test_static_prompt_keeps_prior_conversation_untrusted_and_has_no_application
     assert "ORDERED_UNTRUSTED_CONVERSATION_CONTEXT_JSON" in prompt
     assert "Earlier user request is relevant context" in prompt
     assert "Before returning, check one of these response shapes" in prompt
+    assert "TRUSTED_POLICY_CATEGORY_BY_ID_JSON" in prompt
+    assert "VALID_BENIGN_ALLOW_EXAMPLE_JSON" in prompt
+    assert "VALID_FINDING_EXAMPLE_JSON" in prompt
 
 
 def test_benign_threat_can_require_confirmation():
