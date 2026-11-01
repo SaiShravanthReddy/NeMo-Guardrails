@@ -77,11 +77,12 @@ def _task_table(title: str, artifacts: Sequence[EvaluationArtifact], task_name: 
     ]
     values: dict[str, list[float]] = {metric: [] for metric in _METRICS}
     for artifact in sorted(artifacts, key=lambda item: item.manifest.cross_validation_fold or 0):
-        task: EvaluationTaskMetrics = getattr(artifact.metrics, task_name)
+        task: EvaluationTaskMetrics | None = getattr(artifact.metrics, task_name, None)
         fold = artifact.manifest.cross_validation_fold
-        if not task.available or task.binary is None or task.ranking is None:
+        if task is None or not task.available or task.binary is None or task.ranking is None:
+            eligible = task.eligible_records if task is not None else 0
             lines.append(
-                f"| {fold} | {task.eligible_records} | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable |"
+                f"| {fold} | {eligible} | unavailable | unavailable | unavailable | unavailable | unavailable | unavailable |"
             )
             continue
         binary = task.binary
@@ -139,7 +140,10 @@ def main() -> None:
         "This is a robustness analysis and does not alter the frozen final result."
     )
     print()
-    print(_task_table("Attack-attempt detection", artifacts, "attack_attempt"))
+    print(_task_table("Legacy intervention attack-attempt detection", artifacts, "attack_attempt"))
+    if any(getattr(artifact.metrics, "threat_attempt", None) is not None for artifact in artifacts):
+        print()
+        print(_task_table("Threat-assessment attack-attempt detection", artifacts, "threat_attempt"))
     print()
     print(_task_table("Attack-success detection", artifacts, "attack_success"))
 
