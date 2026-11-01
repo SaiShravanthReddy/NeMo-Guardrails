@@ -22,12 +22,23 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from financial_guardrails.datasets import BenchmarkCase, cnfinbench_adapter, finvault_adapter
 from financial_guardrails.evaluation import EvaluationRecord, grouped_paired_intervention_test, summarize_records
-from financial_guardrails.results import read_evaluation_artifact
+from financial_guardrails.results import ExperimentManifest, read_evaluation_artifact
 from financial_guardrails.splits import benchmark_group_id
+from pydantic import ValidationError
+
+
+@dataclass(frozen=True)
+class _ArtifactRecords:
+    """Validated manifest and records for historical baseline comparison."""
+
+    manifest: ExperimentManifest
+    records: tuple[EvaluationRecord, ...]
 
 
 def main() -> None:
@@ -37,7 +48,7 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    baseline_artifact = read_evaluation_artifact(args.baseline)
+    baseline_artifact = _read_baseline_artifact(args.baseline)
     candidate_artifact = read_evaluation_artifact(args.candidate)
     dataset_key = baseline_artifact.manifest.dataset_key
     if dataset_key != candidate_artifact.manifest.dataset_key:
@@ -111,6 +122,32 @@ def _attach_source_groups(
             raise ValueError("artifact source group does not match the canonical dataset")
         enriched.append(record.model_copy(update={"slices": {**record.slices, "source_group": group}}))
     return tuple(enriched)
+
+
+def _read_baseline_artifact(path: Path) -> _ArtifactRecords:
+    """Load a historical baseline without trusting stale derived metric summaries."""
+
+    try:
+        artifact = read_evaluation_artifact(path)
+        return _ArtifactRecords(manifest=artifact.manifest, records=artifact.records)
+    except ValidationError as exc:
+        if "artifact metrics do not match its records" not in str(exc):
+            raise
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        manifest = ExperimentManifest.model_validate(payload["manifest"])
+        records = tuple(EvaluationRecord.model_validate(record) for record in payload["records"])
+    except (OSError, KeyError, TypeError, json.JSONDecodeError, ValidationError) as exc:
+        raise ValueError("historical baseline artifact has invalid manifest or records") from exc
+    if len(records) != manifest.expected_records:
+        raise ValueError("historical baseline artifact record count does not match its manifest")
+    if any(record.dataset_key != manifest.dataset_key for record in records):
+        raise ValueError("historical baseline artifact contains a record from another dataset")
+    if any(record.positive_label != manifest.positive_label for record in records):
+        raise ValueError("historical baseline artifact positive labels do not match its manifest")
+    if any(record.input_view != manifest.input_view for record in records):
+        raise ValueError("historical baseline artifact input views do not match its manifest")
+    return _ArtifactRecords(manifest=manifest, records=records)
 
 
 def _validate_artifact_dataset(artifact, adapter) -> None:
