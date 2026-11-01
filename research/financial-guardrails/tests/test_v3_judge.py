@@ -168,3 +168,11 @@ def test_missing_policy_finding_has_a_content_free_failure_code():
 
     with pytest.raises(JudgeOutputError, match="missing_policy_finding"):
         detector.detect(_event(), _authorization(), _requirement())
+
+
+def test_missing_response_field_has_a_content_free_failure_code():
+    invalid = json.dumps({"threat_assessment": "benign"})
+    detector = V3PolicyJudgeDetector(StructuredBackend([invalid, invalid]), load_judge_policy())
+
+    with pytest.raises(JudgeOutputError, match="missing_control_action"):
+        detector.detect(_event(), _authorization(), _requirement())

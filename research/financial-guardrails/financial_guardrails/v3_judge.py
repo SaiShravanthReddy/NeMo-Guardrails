@@ -293,4 +293,21 @@ def _validation_error_code(exc: ValidationError) -> str:
         return "judge_output_missing_policy_finding"
     if "benign allow responses cannot contain policy findings" in message:
         return "judge_output_benign_policy_finding"
+    safe_fields = {
+        "threat_assessment",
+        "control_action",
+        "policy_ids",
+        "risk_category",
+        "evidence_summary",
+        "explanation",
+        "sanitized_content",
+        "threat_score",
+    }
+    for error in errors:
+        location = error.get("loc", ())
+        field = location[-1] if location else None
+        if field in safe_fields:
+            if error.get("type") == "missing":
+                return f"judge_output_missing_{field}"
+            return f"judge_output_invalid_{field}"
     return "judge_output_schema_invalid"
