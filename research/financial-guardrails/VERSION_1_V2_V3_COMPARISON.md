@@ -322,6 +322,19 @@ V3 did not satisfy its frozen qualification conditions:
 The candidate is frozen as a **non-qualifying diagnostic**. It must not be
 tuned repeatedly on the same folds or run on a new final holdout.
 
+Before presenting a V1-versus-V3 comparison, verify that the V1 baseline used
+the same `v3_clean` input and reviewed-group exclusions. The available local
+workspace does not contain the full HPG baseline artifacts needed to verify
+their manifests, so current deltas should be described as diagnostic. A
+post-evaluation audit also found a V3 record/manifest outcome-score-mode
+metadata mismatch and a policy/category normalization behavior that does not
+match the frozen one-repair-then-fail-closed contract. The review audit found
+benchmark hints in the original human-review packet; the corrected packet
+cannot undo that earlier exposure. These limitations do not alter the observed
+CV metrics, but they must be disclosed and resolved before a new candidate or
+formal selection claim. See the [metrics comparison](VERSION_1_V2_V3_METRICS_COMPARISON.md)
+for details.
+
 ### Version 3 closure items
 
 The following are correctness and provenance tasks for future candidates; they
