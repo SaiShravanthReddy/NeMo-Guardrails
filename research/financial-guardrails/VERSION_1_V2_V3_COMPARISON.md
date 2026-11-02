@@ -143,9 +143,12 @@ datasets:
 
 The Version 3 input audit found raw benchmark identifiers and generator
 annotations that could leak benchmark hints into earlier judge prompts. V1
-results remain frozen historical results, but they are not a clean efficacy
-baseline for V3 until Version 1 is rerun on the same `v3_clean` inputs and
-reviewed-group exclusions.
+results remain frozen historical results. The HPG manifest audit confirmed
+the supplied V1 CV folds used legacy raw input and no reviewed-group exclusion,
+while the final V3 folds used `v3_clean` and the reviewed-group checksum. The
+existing V1–V3 deltas are diagnostic, not a clean-input efficacy comparison.
+Because V3 fails its qualification gates, a matched V1 rerun is not needed for
+the current report unless the team requests a direct comparison.
 
 ## Version 2: narrow policy-only experiment
 
@@ -322,17 +325,15 @@ V3 did not satisfy its frozen qualification conditions:
 The candidate is frozen as a **non-qualifying diagnostic**. It must not be
 tuned repeatedly on the same folds or run on a new final holdout.
 
-Before presenting a V1-versus-V3 comparison, verify that the V1 baseline used
-the same `v3_clean` input and reviewed-group exclusions. The available local
-workspace does not contain the full HPG baseline artifacts needed to verify
-their manifests, so current deltas should be described as diagnostic. A
-post-evaluation audit also found a V3 record/manifest outcome-score-mode
-metadata mismatch and a policy/category normalization behavior that does not
-match the frozen one-repair-then-fail-closed contract. The review audit found
-benchmark hints in the original human-review packet; the corrected packet
-cannot undo that earlier exposure. These limitations do not alter the observed
-CV metrics, but they must be disclosed and resolved before a new candidate or
-formal selection claim. See the [metrics comparison](VERSION_1_V2_V3_METRICS_COMPARISON.md)
+The supplied HPG audit confirmed the V1 and V3 comparison artifacts do not
+share the input view or reviewed-group exclusion, so their deltas are
+diagnostic. It also confirmed all 405 final V3 records have
+`enforcement_only` while their manifests specify `score_all_outcome_events`.
+The evaluated judge normalizes policy/category mismatch instead of applying
+the frozen repair-and-fail-closed contract. The review audit also found
+benchmark hints in the original human-review packet; correcting the packet
+cannot undo prior exposure. These caveats do not change the recorded CV
+metrics, but they must be disclosed. See the [metrics comparison](VERSION_1_V2_V3_METRICS_COMPARISON.md)
 for details.
 
 ### Version 3 closure items
@@ -340,11 +341,13 @@ for details.
 The following are correctness and provenance tasks for future candidates; they
 do not modify the frozen V3 result:
 
-1. Verify a matched V1 clean-input baseline before making an efficacy claim
-   from V1/V3 paired comparisons.
-2. Make each record's outcome-score mode agree with the artifact manifest.
-3. Require code commit, reviewed-group checksum, and dataset/metadata
-   checksums to match across all CV artifacts.
+1. Treat existing V1/V3 paired comparisons as diagnostic. Run a matched clean
+   V1 replay only if the team requests a direct efficacy comparison.
+2. The historical V3 artifacts have 405 record/manifest score-mode mismatches.
+   Current code fixes record construction and rejects mismatches; old artifacts
+   remain legacy pending a documented metadata migration.
+3. Current CV reporting enforces code, reviewed-group, dataset, and metadata
+   hashes. The four final V3 folds were confirmed to match on these fields.
 4. Enforce the written semantic rule that a policy/category mismatch gets one
    repair and then fails closed; do not silently normalize a mismatch while
    claiming semantic validation.

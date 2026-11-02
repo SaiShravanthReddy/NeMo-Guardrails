@@ -47,18 +47,21 @@ Therefore:
 These tasks do not change the frozen candidate or its result. A future run
 after any behavioral change is a new candidate.
 
-1. Verify the Version 1 baseline artifacts use the same clean input view and
-   reviewed-group exclusions as Version 3. If they do not, label the current
-   paired comparison diagnostic and rerun Version 1 once on identical
-   non-final clean cases.
+1. **Verified from the supplied HPG audit:** the V1 CV folds use legacy raw
+   input and have no reviewed-group checksum, while V3 uses `v3_clean` and
+   excludes reviewed groups. Existing V1/V3 comparisons are diagnostic. Since
+   V3 fails its gates, a matched V1 replay is not needed for the current report
+   unless the team requests a direct efficacy comparison.
 2. **Fixed locally after the evaluated run:** V3 record builders now set
    `score_all_outcome_events`, and artifact/checkpoint validation rejects a
-   score-mode mismatch. The historical HPG artifacts still need inspection
-   because they are not present in the local workspace.
+   score-mode mismatch. The supplied HPG audit confirmed all 405 final V3
+   records have `enforcement_only` while their manifests say
+   `score_all_outcome_events`. This affects metadata consistency, not the
+   recorded metric calculations.
 3. **Fixed locally after the evaluated run:** CV reporting now requires equal
    code commit, reviewed-group checksum, and dataset/metadata checksums across
-   folds. Historical HPG manifests still need inspection because they are not
-   present in the local workspace.
+   folds. The supplied HPG audit confirmed the four final V3 folds match on
+   commit `3cfc1c7f2`, reviewed-group checksum, dataset hash, and metadata hash.
 4. Restore the agreed judge contract: a policy/category mismatch receives one
    repair attempt and then fails closed. Do not silently normalize a model
    mismatch while claiming semantic validation.
@@ -77,7 +80,7 @@ folds. It does not alter or replace the evaluated candidate at commit
 | Team-report audit caveats | Added to the V1/V2/V3 comparison reports. | Commit `cd29ec05a`; pre-commit passed. |
 | V3 record/manifest outcome-score mode | Fixed in current code; artifact and checkpoint validators reject mismatches. | Commit `ab0694b21`; 19 focused tests and pre-commit passed. |
 | CV fold provenance | Reporter now requires matching code, reviewed-group, dataset, and metadata hashes. | Commit `a3bb06821`; 8 focused tests and pre-commit passed. |
-| Historical HPG artifact manifests | Still unverified; full V1/V3 CV artifacts are not present locally. | Inspect on HPG before claiming a matched V1/V3 comparison or loading old V3 artifacts with the stricter validator. |
+| Historical HPG artifact manifests | Audited from the supplied content-free output. | V1/V3 inputs are not matched; final V3 folds share provenance; all 405 final V3 records mismatch their manifest score mode. |
 | Policy/category mismatch behavior | Disclosed as a mismatch with the frozen one-repair-then-fail-closed contract. | Do not claim this behavior is implemented for the evaluated candidate. |
 | Human-review blinding | Disclosed as limited by the original packet defect. | The corrected packet cannot undo earlier exposure; review remains exploratory evidence. |
 

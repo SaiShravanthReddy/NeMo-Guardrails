@@ -206,19 +206,22 @@ The following issues were identified in a post-evaluation implementation and
 artifact audit. They do not change the recorded fold metrics, but they limit
 what we can claim about comparability and conformance:
 
-1. **Matched Version 1 baseline is not verified yet.** The V3 protocol requires
-   Version 1 and Version 3 comparisons to use identical `v3_clean` inputs and
-   reviewed-group exclusions. The full HPG baseline artifacts are not present
-   in the local workspace used to prepare this report, so their manifests have
-   not been verified here. Until verified, describe V1–V3 deltas as diagnostic,
-   not a clean-input efficacy comparison.
-2. **Record/manifest score-mode metadata was inconsistent in the evaluated
-   code path.** The V3 manifest declares `score_all_outcome_events`, while the
-   V3 record builders previously inherited the default `enforcement_only`
-   value. A local fix now sets the V3 record mode explicitly and rejects
-   mismatched artifacts and checkpoints. The HPG result artifacts are not
-   present locally, so their stored record fields still need inspection. This
-   metadata issue does not change the reported metric calculations.
+1. **The supplied Version 1 baseline is not a matched clean-input baseline.**
+   The HPG audit output shows the V1 folds use commit
+   `4501337d993c1d61c860b00d0d4ed7efd288c45d`, have no `input_view` or reviewed
+   group checksum, and contain 205/200/227/188 cases. The final V3 folds use
+   `v3_clean`, the reviewed-group checksum, and 60/119/118/108 cases. Therefore
+   any V1–V3 fold deltas are diagnostic, not a clean-input efficacy comparison.
+   A matched V1 replay would be needed to make that claim; since V3 already
+   fails its selection gates, such a replay is unnecessary for reporting the
+   current candidate unless the team specifically requests it.
+2. **Record/manifest score-mode metadata was inconsistent in all final V3
+   records.** The supplied HPG audit shows each final V3 manifest declares
+   `score_all_outcome_events`, but all 405 records say `enforcement_only` (405
+   mismatches total). A local fix now sets the record mode explicitly and
+   rejects mismatched artifacts and checkpoints. This metadata issue does not
+   change the reported metric calculations, but the historical artifacts fail
+   the new consistency check and must be treated as legacy artifacts.
 3. **Policy/category semantic validation differs from the frozen contract.**
    The evaluated judge code derives the risk category from the first selected
    policy ID when the model returns a category. The frozen protocol instead
@@ -235,9 +238,10 @@ These caveats should accompany any team presentation of V3. They do not justify
 changing the already observed results or silently editing the frozen candidate.
 
 The CV report validator has since been hardened to reject folds whose code,
-review-group, dataset, or metadata hashes differ. This prevents future reports
-from silently combining unlike artifacts; the historical HPG manifests still
-need to be checked against this stricter rule.
+review-group, dataset, or metadata hashes differ. The supplied HPG audit shows
+the four final V3 folds match on candidate commit `3cfc1c7f2`, dataset hash,
+metadata hash, and reviewed-group checksum. Earlier V3 trial artifacts use
+different commits and must not be combined with these final-candidate folds.
 
 ## What can and cannot be concluded
 
