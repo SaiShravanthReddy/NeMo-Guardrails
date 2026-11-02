@@ -1,0 +1,87 @@
+# Version 3 Status and Next Steps
+
+## Current status
+
+Version 3 is implemented and its current candidate has completed non-final
+four-fold cross-validation. It is a useful diagnostic result, but it is **not
+a qualifying replacement for Version 1** and must not be evaluated on the
+held-out final split.
+
+The evaluated candidate is commit `3cfc1c7f2`. It used static, cleaned
+conversation inputs only: benchmark labels, attack-success annotations, and
+simulated outcome fields were evaluator-only and were not supplied to the
+guardrail.
+
+## What is complete
+
+- Separate Version 3 runner, schema-constrained judge, threat/control split,
+  and static-trace outcome monitor.
+- Static-input boundary checks and a small live HPG preflight gate.
+- Fresh non-final grouped CV: 405/405 records completed, with zero detector
+  errors, complete threat-score coverage, and matching judge-attempt/backend
+  call telemetry.
+- Content-free review packet and reviewed-source-group exclusion. The review
+  is exploratory development evidence; it is not independent final evidence.
+
+## Result and decision
+
+The candidate did not meet the predeclared false-positive objective:
+
+| Endpoint | Mean FPR across folds | Decision |
+| --- | ---: | --- |
+| Legacy intervention | 76.7% | Does not meet the <=30% target |
+| Version 3 threat assessment | 67.1% | Does not meet the <=30% target |
+
+Attack-success coverage was incomplete (15.7% to 66.7% by fold), so
+attack-success F1, AUROC, and AUPRC are unavailable. Static traces also do not
+establish real authorization, confirmation, or execution.
+
+Therefore:
+
+1. Freeze these artifacts as a **non-qualifying Version 3 diagnostic**.
+2. Do not tune thresholds, prompts, or policies against these same CV folds.
+3. Do not run the final held-out split for this candidate.
+
+## Required closure and correctness work
+
+These tasks do not change the frozen candidate or its result. A future run
+after any behavioral change is a new candidate.
+
+1. Verify the Version 1 baseline artifacts use the same clean input view and
+   reviewed-group exclusions as Version 3. If they do not, label the current
+   paired comparison diagnostic and rerun Version 1 once on identical
+   non-final clean cases.
+2. Fix the artifact invariant so every record's outcome-score mode agrees with
+   the manifest's outcome-score mode.
+3. Make CV reporting require equal candidate provenance across folds, including
+   code commit, reviewed-group checksum, and dataset/metadata checksums.
+4. Restore the agreed judge contract: a policy/category mismatch receives one
+   repair attempt and then fails closed. Do not silently normalize a model
+   mismatch while claiming semantic validation.
+5. Add end-to-end tests showing all known labels and sidecar annotations are
+   absent from both threat and outcome prompts. Bound untrusted prior-context
+   length for cost, privacy, and prompt-injection resilience.
+
+## Best path to the next candidate
+
+1. Produce a content-free false-positive taxonomy from the fresh CV artifacts:
+   decision, policy, surface, tool, and legitimate-workflow category.
+2. Select one fundamental policy/authorization hypothesis from that evidence.
+   Do not use threshold tuning or change the fixed model/routing configuration.
+3. Obtain more independent, source-group-disjoint normal/high-impact workflows
+   or define a separate instrumented benchmark. Only 36 normal cases remain in
+   the current non-final pool, which is insufficient to certify a 30% FPR.
+4. If further manual review is needed, use a fresh blinded two-reviewer packet
+   and documented adjudication; do not reuse the exploratory review as final
+   evidence.
+5. Preregister the next candidate (for example, Version 3.1): exact policy
+   change, hashes, allowed data, evaluation split, and pass/fail gates.
+6. Run local tests, then a small HPG reliability gate, then one grouped-CV
+   evaluation. Use the held-out final split only if every preregistered gate
+   passes.
+
+## HPG decision
+
+No HPG job is justified for the unchanged Version 3 candidate. The next HPG
+job should be a small reliability gate for a separately preregistered,
+fundamentally changed candidate.
