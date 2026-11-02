@@ -234,6 +234,11 @@ what we can claim about comparability and conformance:
 These caveats should accompany any team presentation of V3. They do not justify
 changing the already observed results or silently editing the frozen candidate.
 
+The CV report validator has since been hardened to reject folds whose code,
+review-group, dataset, or metadata hashes differ. This prevents future reports
+from silently combining unlike artifacts; the historical HPG manifests still
+need to be checked against this stricter rule.
+
 ## What can and cannot be concluded
 
 | Statement | Supported? | Reason |

@@ -23,7 +23,11 @@ from scripts.report_cross_validation import _task_table, _validate_artifacts
 
 def _artifact(fold: int, case_id: str):
     manifest = SimpleNamespace(
+        code_commit="c" * 40,
         dataset_key="fixture",
+        dataset_sha256="d" * 64,
+        metadata_sha256="e" * 64,
+        reviewed_groups_sha256="f" * 64,
         backend="fixture",
         model_id="fixture-model",
         model_revision="revision",
@@ -62,6 +66,18 @@ def test_rejects_mixed_static_and_production_artifacts():
         "evaluation_mode": "production",
         "outcome_evidence_mode": "trusted_application_execution_context",
     }
+
+    with pytest.raises(ValueError, match="different configurations"):
+        _validate_artifacts(artifacts)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ("code_commit", "dataset_sha256", "metadata_sha256", "reviewed_groups_sha256"),
+)
+def test_rejects_mixed_provenance(field):
+    artifacts = tuple(_artifact(fold, f"case-{fold}") for fold in range(4))
+    setattr(artifacts[3].manifest, field, "different")
 
     with pytest.raises(ValueError, match="different configurations"):
         _validate_artifacts(artifacts)

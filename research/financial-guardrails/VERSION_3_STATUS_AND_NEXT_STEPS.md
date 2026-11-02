@@ -55,8 +55,10 @@ after any behavioral change is a new candidate.
    `score_all_outcome_events`, and artifact/checkpoint validation rejects a
    score-mode mismatch. The historical HPG artifacts still need inspection
    because they are not present in the local workspace.
-3. Make CV reporting require equal candidate provenance across folds, including
-   code commit, reviewed-group checksum, and dataset/metadata checksums.
+3. **Fixed locally after the evaluated run:** CV reporting now requires equal
+   code commit, reviewed-group checksum, and dataset/metadata checksums across
+   folds. Historical HPG manifests still need inspection because they are not
+   present in the local workspace.
 4. Restore the agreed judge contract: a policy/category mismatch receives one
    repair attempt and then fails closed. Do not silently normalize a model
    mismatch while claiming semantic validation.
