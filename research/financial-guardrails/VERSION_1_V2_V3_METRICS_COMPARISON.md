@@ -200,6 +200,39 @@ Version 3 is therefore a non-qualifying diagnostic. The correct action is not
 to lower the gate after observing this result or to tune repeatedly against the
 same folds.
 
+## Audit caveats before sharing
+
+The following issues were identified in a post-evaluation implementation and
+artifact audit. They do not change the recorded fold metrics, but they limit
+what we can claim about comparability and conformance:
+
+1. **Matched Version 1 baseline is not verified yet.** The V3 protocol requires
+   Version 1 and Version 3 comparisons to use identical `v3_clean` inputs and
+   reviewed-group exclusions. The full HPG baseline artifacts are not present
+   in the local workspace used to prepare this report, so their manifests have
+   not been verified here. Until verified, describe V1–V3 deltas as diagnostic,
+   not a clean-input efficacy comparison.
+2. **Record/manifest score-mode metadata may disagree.** The V3 manifest
+   declares `score_all_outcome_events`, while V3 evaluation records may retain
+   the default `enforcement_only` value. This is a provenance inconsistency;
+   verify the HPG artifacts and fix the record construction/validation before
+   relying on this field in a future run. No changed metrics are claimed from
+   this finding.
+3. **Policy/category semantic validation differs from the frozen contract.**
+   The evaluated judge code derives the risk category from the first selected
+   policy ID when the model returns a category. The frozen protocol instead
+   requires a category/policy mismatch to receive one repair, then fail closed.
+   This behavior must be corrected or formally amended before a new candidate;
+   do not describe the current implementation as enforcing that semantic
+   mismatch check.
+4. **Review blinding was limited.** The review audit found benchmark hints in
+   the original packet. A corrected packet removed identified hints, but it
+   cannot undo reviewers' earlier exposure. The review informed exploratory
+   design; it is not independent blinded validation evidence.
+
+These caveats should accompany any team presentation of V3. They do not justify
+changing the already observed results or silently editing the frozen candidate.
+
 ## What can and cannot be concluded
 
 | Statement | Supported? | Reason |
