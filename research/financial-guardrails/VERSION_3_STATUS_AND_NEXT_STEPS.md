@@ -66,6 +66,21 @@ after any behavioral change is a new candidate.
    absent from both threat and outcome prompts. Bound untrusted prior-context
    length for cost, privacy, and prompt-injection resilience.
 
+## Pre-report audit progress
+
+The following documentation and integrity work was completed after the V3
+folds. It does not alter or replace the evaluated candidate at commit
+`3cfc1c7f2` or its recorded metrics.
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Team-report audit caveats | Added to the V1/V2/V3 comparison reports. | Commit `cd29ec05a`; pre-commit passed. |
+| V3 record/manifest outcome-score mode | Fixed in current code; artifact and checkpoint validators reject mismatches. | Commit `ab0694b21`; 19 focused tests and pre-commit passed. |
+| CV fold provenance | Reporter now requires matching code, reviewed-group, dataset, and metadata hashes. | Commit `a3bb06821`; 8 focused tests and pre-commit passed. |
+| Historical HPG artifact manifests | Still unverified; full V1/V3 CV artifacts are not present locally. | Inspect on HPG before claiming a matched V1/V3 comparison or loading old V3 artifacts with the stricter validator. |
+| Policy/category mismatch behavior | Disclosed as a mismatch with the frozen one-repair-then-fail-closed contract. | Do not claim this behavior is implemented for the evaluated candidate. |
+| Human-review blinding | Disclosed as limited by the original packet defect. | The corrected packet cannot undo earlier exposure; review remains exploratory evidence. |
+
 ## Best path to the next candidate
 
 1. Produce a content-free false-positive taxonomy from the fresh CV artifacts:
