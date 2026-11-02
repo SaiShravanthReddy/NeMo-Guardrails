@@ -51,8 +51,10 @@ after any behavioral change is a new candidate.
    reviewed-group exclusions as Version 3. If they do not, label the current
    paired comparison diagnostic and rerun Version 1 once on identical
    non-final clean cases.
-2. Fix the artifact invariant so every record's outcome-score mode agrees with
-   the manifest's outcome-score mode.
+2. **Fixed locally after the evaluated run:** V3 record builders now set
+   `score_all_outcome_events`, and artifact/checkpoint validation rejects a
+   score-mode mismatch. The historical HPG artifacts still need inspection
+   because they are not present in the local workspace.
 3. Make CV reporting require equal candidate provenance across folds, including
    code commit, reviewed-group checksum, and dataset/metadata checksums.
 4. Restore the agreed judge contract: a policy/category mismatch receives one

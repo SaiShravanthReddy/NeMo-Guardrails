@@ -103,6 +103,8 @@ class EvaluationArtifact(BaseModel):
             raise ValueError("artifact positive labels do not match the manifest")
         if any(record.input_view != self.manifest.input_view for record in self.records):
             raise ValueError("artifact input views do not match the manifest")
+        if any(record.outcome_score_mode != self.manifest.outcome_score_mode for record in self.records):
+            raise ValueError("artifact outcome score modes do not match the manifest")
         elapsed = self.manifest.inference_elapsed_seconds
         if elapsed is None:
             elapsed = (self.manifest.completed_at - self.manifest.started_at).total_seconds()

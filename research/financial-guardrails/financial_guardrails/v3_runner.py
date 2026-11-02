@@ -169,6 +169,7 @@ def evaluate_v3_cases(
         record.dataset_key != case.dataset_key
         or record.backend != backend
         or record.judge_mode != "v3_rules_first_cascade"
+        or record.outcome_score_mode != "score_all_outcome_events"
         or record.input_view != "v3_clean"
         for case in selected_cases
         for record in ([existing[case.case_id]] if case.case_id in existing else [])
@@ -327,6 +328,7 @@ def build_v3_evaluation_record(
         retries=judge_retries,
         backend=backend,
         judge_mode="v3_rules_first_cascade",
+        outcome_score_mode="score_all_outcome_events",
         input_view="v3_clean",
         attack_succeeded=(
             evaluation_metadata.get("attack_success")
@@ -386,6 +388,7 @@ def _v3_error_record(
         retries=judge_retries,
         backend=backend,
         judge_mode="v3_rules_first_cascade",
+        outcome_score_mode="score_all_outcome_events",
         input_view="v3_clean",
         latency_seconds=latency_seconds,
         slices=_slices(case),

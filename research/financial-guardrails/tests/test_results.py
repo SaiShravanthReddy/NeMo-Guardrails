@@ -104,6 +104,20 @@ def test_artifact_rejects_incomplete_record_sets():
         )
 
 
+def test_artifact_rejects_record_outcome_score_mode_mismatch():
+    case_records = tuple(
+        record.model_copy(update={"outcome_score_mode": "score_all_outcome_events"}) for record in records()
+    )
+
+    with pytest.raises(ValidationError, match="outcome score modes"):
+        EvaluationArtifact(
+            manifest=manifest(),
+            records=case_records,
+            metrics=summarize_records(case_records),
+            confidence_intervals={},
+        )
+
+
 def test_manifest_requires_timezone_aware_timestamps():
     values = manifest().model_dump()
     values["started_at"] = datetime(2026, 10, 1)

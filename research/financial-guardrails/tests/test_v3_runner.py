@@ -19,6 +19,7 @@
 from financial_guardrails.authorization import AuthorizationRequirement, AuthorizationState, TrustedAuthorizationContext
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
 from financial_guardrails.engine import PolicyEngine
+from financial_guardrails.evaluation import EvaluationRecord
 from financial_guardrails.judge import JudgeOutputError
 from financial_guardrails.outcome_judge import OutcomeJudgeResponse, TrustedOutcomeContext
 from financial_guardrails.schema import (
@@ -193,6 +194,7 @@ def test_v3_judge_failure_fails_closed_without_aborting_the_case():
         backend="fixture",
     )
     assert record.failure_code == "judge_output_schema_invalid"
+    assert record.outcome_score_mode == "score_all_outcome_events"
 
 
 def test_outcome_evaluator_uses_only_opaque_conversation_id_for_trusted_context():
@@ -270,6 +272,7 @@ def test_evaluation_record_keeps_attempt_and_success_separate():
     assert record.attack_succeeded is True
     assert record.attack_success_prediction is True
     assert record.attack_success_risk_score == 0.9
+    assert record.outcome_score_mode == "score_all_outcome_events"
 
 
 def test_v3_replay_uses_clean_events_and_resumes_from_checkpoint(tmp_path):
@@ -313,6 +316,43 @@ def test_v3_replay_uses_clean_events_and_resumes_from_checkpoint(tmp_path):
     assert first[0].case_id == "harmful-opaque-case"
     assert resolver.event_ids == []
     assert len(judge.events) == 1
+
+
+def test_v3_replay_rejects_checkpoint_with_wrong_outcome_score_mode(tmp_path):
+    context = TrustedAuthorizationContext()
+    requirement = AuthorizationRequirement(operation="message")
+    evaluator, _resolver, _judge = _evaluator(context, requirement)
+    case = BenchmarkCase(
+        dataset_key="fixture",
+        case_id="opaque:checkpoint-mode",
+        label=0,
+        messages=(),
+    )
+    checkpoint = tmp_path / "v3.checkpoint.jsonl"
+    record = EvaluationRecord(
+        dataset_key="fixture",
+        case_id=case.case_id,
+        label=0,
+        prediction=False,
+        decision=Decision.ALLOW,
+        backend="fixture",
+        judge_mode="v3_rules_first_cascade",
+        input_view="v3_clean",
+    )
+    checkpoint.write_text(record.model_dump_json() + "\n", encoding="utf-8")
+
+    try:
+        evaluate_v3_cases(
+            (case,),
+            event_evaluator=evaluator,
+            outcome_evaluator=None,
+            backend="fixture",
+            checkpoint_path=checkpoint,
+        )
+    except ValueError as exc:
+        assert "checkpoint configuration" in str(exc)
+    else:
+        raise AssertionError("checkpoint with mismatched outcome score mode was accepted")
 
 
 def test_v3_replay_records_outcome_error_without_losing_attempt_result():

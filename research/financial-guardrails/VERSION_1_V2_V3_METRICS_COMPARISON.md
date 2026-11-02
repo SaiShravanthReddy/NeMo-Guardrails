@@ -212,12 +212,13 @@ what we can claim about comparability and conformance:
    in the local workspace used to prepare this report, so their manifests have
    not been verified here. Until verified, describe V1–V3 deltas as diagnostic,
    not a clean-input efficacy comparison.
-2. **Record/manifest score-mode metadata may disagree.** The V3 manifest
-   declares `score_all_outcome_events`, while V3 evaluation records may retain
-   the default `enforcement_only` value. This is a provenance inconsistency;
-   verify the HPG artifacts and fix the record construction/validation before
-   relying on this field in a future run. No changed metrics are claimed from
-   this finding.
+2. **Record/manifest score-mode metadata was inconsistent in the evaluated
+   code path.** The V3 manifest declares `score_all_outcome_events`, while the
+   V3 record builders previously inherited the default `enforcement_only`
+   value. A local fix now sets the V3 record mode explicitly and rejects
+   mismatched artifacts and checkpoints. The HPG result artifacts are not
+   present locally, so their stored record fields still need inspection. This
+   metadata issue does not change the reported metric calculations.
 3. **Policy/category semantic validation differs from the frozen contract.**
    The evaluated judge code derives the risk category from the first selected
    policy ID when the model returns a category. The frozen protocol instead
