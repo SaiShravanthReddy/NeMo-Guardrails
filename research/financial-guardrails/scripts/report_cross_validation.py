@@ -32,7 +32,11 @@ def _configuration_identity(artifact: EvaluationArtifact) -> tuple[object, ...]:
     manifest = artifact.manifest
     generation_settings = getattr(manifest, "generation_settings", {})
     return (
+        manifest.code_commit,
         manifest.dataset_key,
+        manifest.dataset_sha256,
+        manifest.metadata_sha256,
+        getattr(manifest, "reviewed_groups_sha256", None),
         manifest.backend,
         manifest.model_id,
         manifest.model_revision,
