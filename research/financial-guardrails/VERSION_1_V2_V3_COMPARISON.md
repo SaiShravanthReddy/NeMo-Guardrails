@@ -386,6 +386,7 @@ do not modify the frozen V3 result:
 - [Version 3 Protocol Amendment 2](VERSION_3_PROTOCOL_AMENDMENT_2.md)
 - [Version 3 Review Audit](VERSION_3_REVIEW_AUDIT.md)
 - [Version 3 Status and Next Steps](VERSION_3_STATUS_AND_NEXT_STEPS.md)
+- [Version 1, Version 2, and Version 3 Metrics Comparison](VERSION_1_V2_V3_METRICS_COMPARISON.md)
 - [Evaluation Protocol](EVALUATION_PROTOCOL.md)
 - [Metrics](METRICS.md)
 - [Lakera-to-policy mapping](policies/POLICY_MAPPING.md)
