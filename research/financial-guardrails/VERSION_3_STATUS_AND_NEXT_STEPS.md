@@ -36,9 +36,13 @@ The candidate did not meet the predeclared false-positive objective:
 | Legacy intervention | 76.7% | Does not meet the <=30% target |
 | Version 3 threat assessment | 67.1% | Does not meet the <=30% target |
 
-Attack-success coverage was incomplete (15.7% to 66.7% by fold), so
-attack-success F1, AUROC, and AUPRC are unavailable. Static traces also do not
-establish real authorization, confirmation, or execution.
+Attack-success score coverage was 135/405 pooled (33.3%; 15.7% to 66.7% by
+fold), so attack-success F1, AUROC, and AUPRC are unavailable. A later
+content-free audit found that all 405 eligible cases had output or tool events;
+the 270 missing scores were marked as outcome-judge errors, not absent event
+evidence. The artifacts do not retain the specific error causes, so replay
+recovery remains unconfirmed. Static traces also do not establish real
+authorization, confirmation, or execution.
 
 Therefore:
 
@@ -85,6 +89,7 @@ folds. It does not alter or replace the evaluated candidate at commit
 | V3 record/manifest outcome-score mode | Fixed in current code; artifact and checkpoint validators reject mismatches. | Commit `ab0694b21`; 19 focused tests and pre-commit passed. |
 | CV fold provenance | Reporter now requires matching code, reviewed-group, dataset, and metadata hashes. | Commit `a3bb06821`; 8 focused tests and pre-commit passed. |
 | Historical HPG artifact manifests | Audited from the supplied content-free output. | V1/V3 inputs are not matched; final V3 folds share provenance; all 405 final V3 records mismatch their manifest score mode. |
+| V3 outcome-score coverage causes | Audited from four final FinVault V3 artifacts. | 135/405 scores present; 270 missing scores flagged as outcome-judge errors; zero cases lacked outcome events; error causes unavailable. |
 | Policy/category mismatch behavior | Disclosed as a mismatch with the frozen one-repair-then-fail-closed contract. | Do not claim this behavior is implemented for the evaluated candidate. |
 | Human-review blinding | Disclosed as limited by the original packet defect. | The corrected packet cannot undo earlier exposure; review remains exploratory evidence. |
 
