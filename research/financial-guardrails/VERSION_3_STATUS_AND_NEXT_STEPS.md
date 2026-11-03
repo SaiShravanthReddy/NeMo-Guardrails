@@ -4,9 +4,11 @@
 
 Version 3 is implemented and its current candidate has completed non-final
 four-fold cross-validation on FinVault. CNFinBench Version 3 cross-validation
-has not been run, so the two-dataset evaluation is incomplete. The FinVault
-result is a useful diagnostic, but it is **not a qualifying replacement for
-Version 1** and must not be evaluated on the held-out final split.
+jobs have been submitted for both Version 2 and Version 3 and are currently
+running; their outputs are not yet verified. Until they finish and pass
+artifact checks, the two-dataset evaluation is incomplete. The FinVault result
+is a useful diagnostic, but it is **not a qualifying replacement for Version
+1** and must not be evaluated on the held-out final split.
 
 The evaluated candidate is commit `3cfc1c7f2`. It used static, cleaned
 conversation inputs only: benchmark labels, attack-success annotations, and
@@ -21,9 +23,10 @@ guardrail.
 - Fresh non-final grouped CV: 405/405 records completed, with zero detector
   errors, complete threat-score coverage, and matching judge-attempt/backend
   call telemetry.
-- Dataset coverage: FinVault only. A corresponding non-final CNFinBench V3
-  evaluation remains outstanding. Every candidate evaluation should cover
-  both datasets and report them separately.
+- Dataset coverage: FinVault CV is complete. Four-fold CNFinBench V2 and V3
+  jobs are running; evaluate their artifacts separately after they finish.
+  Every candidate evaluation should cover both datasets and report them
+  separately.
 - Content-free review packet and reviewed-source-group exclusion. The review
   is exploratory development evidence; it is not independent final evidence.
 
@@ -113,8 +116,8 @@ folds. It does not alter or replace the evaluated candidate at commit
 
 ## HPG decision
 
-The next HPG evaluation needed to complete Version 3's dataset coverage is
-four-fold CNFinBench cross-validation using the frozen V3 candidate and its
-existing protocol. Keep it separate from the FinVault result; do not run the
-held-out final split. After both datasets are covered, any new candidate must
-again pass a small reliability gate before grouped CV.
+The four-fold CNFinBench V2 and V3 jobs have already been submitted. Do not
+submit duplicates. After they finish, validate each artifact's fold membership,
+coverage, detector errors, score coverage, and telemetry; keep dataset and
+version results separate. Do not run the held-out final split. Any new
+candidate must pass a small reliability gate before grouped CV.

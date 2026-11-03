@@ -13,7 +13,7 @@ score coverage.
   three eligible missing-score cases per fold, and writes private checkpoints
   retaining all other records.
 - [x] Verify tests and code checks before using it on HPG.
-- [x] Commit and push the validated research changes (`721725fcb`).
+- [x] Commit and push the validated research changes (`d1dbf86f9`).
 
 ## HPG preparation and run
 
@@ -43,9 +43,11 @@ Run these steps from
    reviewed-groups file above, that fold's `.checkpoint.jsonl` as `CHECKPOINT`,
    and `OUTPUT_DIR=outputs/finvault-v3-outcome-gate`.
 4. Verify all four jobs exit successfully and each resulting fold artifact has
-   the expected case count, zero detector errors for the 12 replayed cases,
-   complete attack-success score coverage for those cases, and matching judge
-   attempt/backend-call telemetry. Inspect only aggregate failure-code counts.
+   the expected case count, complete attack-success score coverage for the 12
+   replayed cases, zero outcome-score detector errors for those cases, and
+   matching judge attempt/backend-call telemetry. Check attempt-detector
+   errors separately; they are not the outcome-score gate. Inspect only
+   aggregate outcome failure-code counts.
 5. If the gate passes, prepare a full repair for remaining eligible cases with
    missing scores. If it fails, use the error-code counts to diagnose first;
    do not launch the full replay until the cause is understood.
