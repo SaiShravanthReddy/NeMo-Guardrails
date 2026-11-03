@@ -170,15 +170,20 @@ def main() -> None:
         raise ValueError("artifacts must contain all four CV folds")
     _validate_shared_configuration(artifacts_by_fold)
 
-    args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-    args.output_dir.chmod(0o700)
-    total_replay = 0
+    gate_records = {}
     for fold in range(4):
         manifest, records = artifacts_by_fold[fold]
         replay_ids = select_replay_ids(records, cases_by_id, per_fold=args.per_fold)
         if len(replay_ids) != args.per_fold:
             raise ValueError(f"fold {fold} has fewer than {args.per_fold} eligible replay candidates")
         checkpoint_records = retained_checkpoint_records(records, set(replay_ids))
+        gate_records[fold] = (manifest, replay_ids, checkpoint_records)
+
+    args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    args.output_dir.chmod(0o700)
+    total_replay = 0
+    for fold in range(4):
+        manifest, replay_ids, checkpoint_records = gate_records[fold]
         stem = f"finvault-v3-cv{fold}-outcome-gate"
         checkpoint_path = args.output_dir / f"{stem}.checkpoint.jsonl"
         case_ids_path = args.output_dir / f"{stem}.case-ids.txt"
@@ -200,7 +205,7 @@ def _validate_shared_configuration(
     if any(len({getattr(manifest, field) for manifest in manifests}) != 1 for field in shared_fields):
         raise ValueError("CV artifacts do not share one backend, model, code, and judge policy")
     outcome_policy_hashes = {manifest.generation_settings.get("outcome_policy_sha256") for manifest in manifests}
-    if len(outcome_policy_hashes) != 1:
+    if len(outcome_policy_hashes) != 1 or None in outcome_policy_hashes:
         raise ValueError("CV artifacts do not share one outcome-judge policy")
 
 
