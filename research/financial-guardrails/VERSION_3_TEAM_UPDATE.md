@@ -39,7 +39,7 @@ include both FinVault and CNFinBench, with results reported separately.
 | Threat-score coverage | 100% | A threat score was available for every evaluated case. |
 | Mean intervention false-positive rate | 76.7% | The guardrail still intervened on many normal-labeled cases. |
 | Mean threat-assessment false-positive rate | 67.1% | Threat assessment also marked many normal-labeled cases as suspicious or malicious. |
-| Attack-success score coverage | 15.7%–66.7% by fold | Too incomplete for reliable aggregate attack-success metrics. |
+| Attack-success score coverage | 135/405 pooled (33.3%); 15.7%–66.7% by fold | Too incomplete for reliable aggregate attack-success metrics. |
 
 The predeclared target for both FinVault false-positive endpoints was **30% or
 less**. Version 3 did not meet that target. Its reliable run completion is a
@@ -55,6 +55,10 @@ rates.
   **not qualified to replace Version 1**.
 - Attack-success performance remains undetermined from these folds because
   score coverage was incomplete.
+- A later content-free audit found all 405 eligible cases had output or tool
+  events, while 270 missing scores were marked as outcome-judge errors. The
+  artifacts do not retain the specific error causes, so recovery by replay has
+  not yet been confirmed.
 - Since the benchmark consists of static traces, it cannot show whether an
   action was truly authorized, confirmed by a person, or executed by an
   application.
