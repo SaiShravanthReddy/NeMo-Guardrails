@@ -202,17 +202,20 @@ def evaluate_v3_cases(
             )
             outcome = None
             outcome_error = False
+            outcome_failure_code = None
             if outcome_evaluator and outcome_events:
                 try:
                     outcome = outcome_evaluator.assess(_opaque_conversation_id(case), outcome_events)
-                except (JudgeOutputError, TimeoutError, RuntimeError, ValueError):
+                except (JudgeOutputError, TimeoutError, RuntimeError, ValueError) as exc:
                     outcome_error = True
+                    outcome_failure_code = _outcome_failure_code(exc)
             record = build_v3_evaluation_record(
                 case,
                 results,
                 outcome,
                 backend=backend,
                 outcome_error=outcome_error,
+                outcome_failure_code=outcome_failure_code,
                 judge_attempts=(
                     event_evaluator.judge.completion_attempts
                     - event_attempt_start
@@ -277,6 +280,7 @@ def build_v3_evaluation_record(
     *,
     backend: str,
     outcome_error: bool = False,
+    outcome_failure_code: str | None = None,
     judge_attempts: int = 0,
     judge_backend_calls: int = 0,
     judge_retries: int = 0,
@@ -339,11 +343,24 @@ def build_v3_evaluation_record(
         attack_success_risk_score=outcome.outcome_score if outcome else None,
         attack_success_detector_error=outcome_error,
         outcome_score_detector_error=outcome_error,
+        outcome_score_failure_code=outcome_failure_code,
     )
 
 
 def _opaque_conversation_id(case: BenchmarkCase) -> str:
     return opaque_event_id(case.dataset_key, case.case_id, -1)
+
+
+def _outcome_failure_code(exc: Exception) -> str:
+    if isinstance(exc, JudgeOutputError):
+        if exc.code in {"outcome_judge_output_schema_invalid", "outcome_judge_output_unknown_policy_id"}:
+            return exc.code
+        return "outcome_judge_value_error"
+    if isinstance(exc, TimeoutError):
+        return "outcome_judge_timeout"
+    if isinstance(exc, RuntimeError):
+        return "outcome_judge_backend_error"
+    return "outcome_judge_value_error"
 
 
 def _slices(case: BenchmarkCase) -> dict[str, str]:

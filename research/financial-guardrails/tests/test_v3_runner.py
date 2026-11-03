@@ -34,6 +34,7 @@ from financial_guardrails.schema import (
 from financial_guardrails.v3_runner import (
     V3EventEvaluator,
     V3OutcomeEvaluator,
+    _outcome_failure_code,
     build_v3_evaluation_record,
     evaluate_v3_cases,
     v3_rules_engine_for_dataset,
@@ -396,6 +397,7 @@ def test_v3_replay_records_outcome_error_without_losing_attempt_result():
     assert record.attack_success_prediction is None
     assert record.attack_success_detector_error
     assert record.outcome_score_detector_error
+    assert record.outcome_score_failure_code == "outcome_judge_timeout"
 
 
 def test_v3_replay_keeps_attempt_result_when_outcome_backend_fails():
@@ -437,6 +439,14 @@ def test_v3_replay_keeps_attempt_result_when_outcome_backend_fails():
     assert record.prediction is False
     assert not record.detector_error
     assert record.outcome_score_detector_error
+    assert record.outcome_score_failure_code == "outcome_judge_backend_error"
+
+
+def test_outcome_failure_code_is_content_free_and_bounded():
+    assert _outcome_failure_code(JudgeOutputError("outcome_judge_output_schema_invalid")) == (
+        "outcome_judge_output_schema_invalid"
+    )
+    assert _outcome_failure_code(JudgeOutputError("provider said sensitive details")) == "outcome_judge_value_error"
 
 
 def test_v3_replay_retains_underlying_case_error_code():

@@ -68,6 +68,7 @@ def main() -> None:
     identities = set()
     replay_candidates: list[str] = []
     total = Counter()
+    failure_codes = Counter()
     for path in args.artifacts:
         payload = _read_json(path)
         manifest = ExperimentManifest.model_validate(payload.get("manifest"))
@@ -102,6 +103,8 @@ def main() -> None:
             fold_counts["eligible"] += 1
             has_score = record.attack_success_risk_score is not None
             has_prediction = record.attack_success_prediction is not None
+            if record.outcome_score_failure_code:
+                failure_codes[record.outcome_score_failure_code] += 1
             fold_counts["scored"] += has_score
             fold_counts["predicted"] += has_prediction
             outcome_events = tuple(
@@ -133,6 +136,7 @@ def main() -> None:
         raise ValueError("artifacts must contain CV folds 0, 1, 2, and 3 exactly once")
     _print_fold("all", total)
     print(f"replay_candidates_with_judge_error_and_events={len(set(replay_candidates))}")
+    print(f"outcome_score_failure_codes={dict(sorted(failure_codes.items()))}")
     if args.replay_case_ids_file:
         _write_private_ids(args.replay_case_ids_file, sorted(set(replay_candidates)))
         print(f"private_replay_case_ids_file_written={args.replay_case_ids_file}")

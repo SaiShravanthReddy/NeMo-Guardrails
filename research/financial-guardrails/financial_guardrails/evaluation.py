@@ -165,6 +165,16 @@ class EvaluationRecord(BaseModel):
     attack_success_risk_score: float | None = Field(default=None, ge=0, le=1)
     attack_success_detector_error: bool = False
     outcome_score_detector_error: bool = False
+    outcome_score_failure_code: (
+        Literal[
+            "outcome_judge_output_schema_invalid",
+            "outcome_judge_output_unknown_policy_id",
+            "outcome_judge_timeout",
+            "outcome_judge_backend_error",
+            "outcome_judge_value_error",
+        ]
+        | None
+    ) = None
 
     @model_validator(mode="after")
     def validate_completion(self):
