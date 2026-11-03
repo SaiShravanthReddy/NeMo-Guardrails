@@ -13,7 +13,7 @@ score coverage.
   three eligible missing-score cases per fold, and writes private checkpoints
   retaining all other records.
 - [x] Verify tests and code checks before using it on HPG.
-- [ ] Commit and push the validated research changes.
+- [x] Commit and push the validated research changes (`721725fcb`).
 
 ## HPG preparation and run
 
@@ -60,3 +60,15 @@ Run these steps from
   before reporting outcome ranking metrics.
 - Keep Version 1 and Version 2 artifacts unchanged. Keep case-ID files,
   checkpoints, traces, and generated evaluation artifacts private on HPG.
+
+## Content-free result template
+
+| Fold | Replayed | Completed | Outcome scores | Outcome errors by code | Backend calls match attempts |
+| ---: | ---: | ---: | ---: | --- | --- |
+| 0 |  |  |  |  |  |
+| 1 |  |  |  |  |  |
+| 2 |  |  |  |  |  |
+| 3 |  |  |  |  |  |
+| Total | 12 |  |  |  |  |
+
+Do not put case IDs, prompts, traces, or raw provider responses in this summary.
