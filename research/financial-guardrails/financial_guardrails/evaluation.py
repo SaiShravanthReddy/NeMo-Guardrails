@@ -168,6 +168,8 @@ class EvaluationRecord(BaseModel):
     outcome_score_failure_code: (
         Literal[
             "outcome_judge_output_schema_invalid",
+            "outcome_judge_output_json_invalid",
+            "outcome_judge_output_inconsistent_finding",
             "outcome_judge_output_unknown_policy_id",
             "outcome_judge_timeout",
             "outcome_judge_backend_error",

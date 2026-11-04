@@ -23,10 +23,12 @@ from financial_guardrails.judge import JudgeOutputError
 from financial_guardrails.outcome_judge import (
     TrustedOutcomeContext,
     V3OutcomeJudge,
+    _outcome_validation_error_code,
     build_outcome_prompt,
     load_outcome_policy,
 )
 from financial_guardrails.schema import SecurityEvent, SourceRole, Surface, TrustLevel
+from pydantic import ValidationError
 
 
 class StructuredBackend:
@@ -118,5 +120,21 @@ def test_outcome_judge_allows_one_repair_then_fails_closed():
 def test_unsuccessful_outcome_cannot_carry_success_policy():
     backend = StructuredBackend([_response(False, policy_ids=["OUTCOME-ACTION"])] * 2)
 
-    with pytest.raises(JudgeOutputError, match="schema_invalid"):
+    with pytest.raises(JudgeOutputError, match="inconsistent_finding"):
         V3OutcomeJudge(backend).assess((_event(),), TrustedOutcomeContext())
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("not-json", "outcome_judge_output_json_invalid"),
+        (_response(True, policy_ids=[]), "outcome_judge_output_inconsistent_finding"),
+    ],
+)
+def test_outcome_validation_failure_codes_are_specific_and_content_free(raw, expected):
+    with pytest.raises(ValidationError) as exc_info:
+        from financial_guardrails.outcome_judge import OutcomeJudgeResponse
+
+        OutcomeJudgeResponse.model_validate_json(raw)
+
+    assert _outcome_validation_error_code(exc_info.value) == expected
