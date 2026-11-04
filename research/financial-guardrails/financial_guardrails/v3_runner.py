@@ -357,6 +357,8 @@ def _outcome_failure_code(exc: Exception) -> str:
             "outcome_judge_output_schema_invalid",
             "outcome_judge_output_json_invalid",
             "outcome_judge_output_inconsistent_finding",
+            "outcome_judge_output_missing_field",
+            "outcome_judge_output_invalid_field",
             "outcome_judge_output_unknown_policy_id",
         }:
             return exc.code
