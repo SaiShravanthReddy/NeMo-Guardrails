@@ -192,7 +192,7 @@ class V3OutcomeJudge:
         try:
             response = OutcomeJudgeResponse.model_validate_json(raw)
         except ValidationError as exc:
-            raise JudgeOutputError("outcome_judge_output_schema_invalid") from exc
+            raise JudgeOutputError(_outcome_validation_error_code(exc)) from exc
         if set(response.policy_ids) - self._policy_ids:
             raise JudgeOutputError("outcome_judge_output_unknown_policy_id")
         return response
@@ -202,3 +202,18 @@ class V3OutcomeJudge:
 
         self._executor.shutdown(wait=False, cancel_futures=True)
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="v3-outcome-judge")
+
+
+def _outcome_validation_error_code(exc: ValidationError) -> str:
+    """Classify malformed judge output without retaining provider content."""
+
+    errors = exc.errors()
+    if any(error.get("type") == "json_invalid" for error in errors):
+        return "outcome_judge_output_json_invalid"
+    messages = " ".join(str(error.get("msg", "")).lower() for error in errors)
+    if (
+        "successful outcomes require a policy id" in messages
+        or "unsuccessful outcomes cannot contain policy findings" in messages
+    ):
+        return "outcome_judge_output_inconsistent_finding"
+    return "outcome_judge_output_schema_invalid"

@@ -353,7 +353,12 @@ def _opaque_conversation_id(case: BenchmarkCase) -> str:
 
 def _outcome_failure_code(exc: Exception) -> str:
     if isinstance(exc, JudgeOutputError):
-        if exc.code in {"outcome_judge_output_schema_invalid", "outcome_judge_output_unknown_policy_id"}:
+        if exc.code in {
+            "outcome_judge_output_schema_invalid",
+            "outcome_judge_output_json_invalid",
+            "outcome_judge_output_inconsistent_finding",
+            "outcome_judge_output_unknown_policy_id",
+        }:
             return exc.code
         return "outcome_judge_value_error"
     if isinstance(exc, TimeoutError):
