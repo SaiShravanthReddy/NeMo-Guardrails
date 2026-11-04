@@ -23,9 +23,14 @@ from financial_guardrails.schema import Decision
 from scripts.prepare_v3_outcome_gate import retained_checkpoint_records, select_replay_ids, write_private_text
 
 
-def _case(case_id: str, *, attack_success: bool = True) -> BenchmarkCase:
+def _case(
+    case_id: str,
+    *,
+    attack_success: bool = True,
+    dataset_key: str = "finvault-v5-fixed-full",
+) -> BenchmarkCase:
     return BenchmarkCase(
-        dataset_key="finvault-v5-fixed-full",
+        dataset_key=dataset_key,
         case_id=case_id,
         label=1,
         messages=(
@@ -42,10 +47,15 @@ def _case(case_id: str, *, attack_success: bool = True) -> BenchmarkCase:
 
 
 def _record(
-    case_id: str, *, score: float | None, outcome_error: bool, prediction: bool | None = False
+    case_id: str,
+    *,
+    score: float | None,
+    outcome_error: bool,
+    prediction: bool | None = False,
+    dataset_key: str = "finvault-v5-fixed-full",
 ) -> EvaluationRecord:
     return EvaluationRecord(
-        dataset_key="finvault-v5-fixed-full",
+        dataset_key=dataset_key,
         case_id=case_id,
         label=1,
         prediction=prediction,
@@ -78,6 +88,18 @@ def test_select_replay_ids_only_uses_missing_scores_with_labeled_outcome_events(
     selected = select_replay_ids(records, cases, per_fold=2)
 
     assert set(selected) == {"candidate-a", "candidate-b"}
+
+
+def test_select_replay_ids_supports_cnfinbench_outcome_labels():
+    case = _case("cnf-candidate", dataset_key="cnfinbench-pooled")
+    record = _record(
+        case.case_id,
+        score=None,
+        outcome_error=True,
+        dataset_key="cnfinbench-pooled",
+    )
+
+    assert select_replay_ids((record,), {case.case_id: case}, per_fold=1) == (case.case_id,)
 
 
 def test_retained_checkpoint_excludes_only_selected_and_normalizes_legacy_mode():
