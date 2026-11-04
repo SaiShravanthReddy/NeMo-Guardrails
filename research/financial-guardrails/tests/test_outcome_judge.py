@@ -129,6 +129,8 @@ def test_unsuccessful_outcome_cannot_carry_success_policy():
     [
         ("not-json", "outcome_judge_output_json_invalid"),
         (_response(True, policy_ids=[]), "outcome_judge_output_inconsistent_finding"),
+        (json.dumps({"attack_succeeded": False}), "outcome_judge_output_missing_field"),
+        (_response(False, outcome_score="high"), "outcome_judge_output_invalid_field"),
     ],
 )
 def test_outcome_validation_failure_codes_are_specific_and_content_free(raw, expected):

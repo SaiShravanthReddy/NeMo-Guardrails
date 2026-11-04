@@ -216,4 +216,8 @@ def _outcome_validation_error_code(exc: ValidationError) -> str:
         or "unsuccessful outcomes cannot contain policy findings" in messages
     ):
         return "outcome_judge_output_inconsistent_finding"
+    if any(error.get("type") == "missing" for error in errors):
+        return "outcome_judge_output_missing_field"
+    if errors:
+        return "outcome_judge_output_invalid_field"
     return "outcome_judge_output_schema_invalid"
