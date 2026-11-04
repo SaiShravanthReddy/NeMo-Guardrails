@@ -27,7 +27,7 @@ import os
 from pathlib import Path
 from typing import Sequence
 
-from financial_guardrails.datasets import BenchmarkCase, finvault_adapter, inspect_json_dataset
+from financial_guardrails.datasets import BenchmarkCase, cnfinbench_adapter, finvault_adapter, inspect_json_dataset
 from financial_guardrails.evaluation import EvaluationRecord
 from financial_guardrails.replay import event_from_message
 from financial_guardrails.results import ExperimentManifest
@@ -36,7 +36,6 @@ from financial_guardrails.splits import assign_nonfinal_cross_validation_folds, 
 
 from scripts.run_static_evaluation import _load_reviewed_groups
 
-DATASET_KEY = "finvault-v5-fixed-full"
 OUTCOME_SURFACES = {Surface.OUTPUT, Surface.TOOL_CALL, Surface.TOOL_RESULT}
 
 
@@ -100,25 +99,40 @@ def write_private_text(path: Path, value: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("artifacts", nargs=4, type=Path, help="V3 FinVault CV artifacts for folds 0 through 3")
+    parser.add_argument("artifacts", nargs=4, type=Path, help="V3 CV artifacts for folds 0 through 3")
+    parser.add_argument(
+        "--dataset", choices=("finvault-v5-fixed-full", "cnfinbench-pooled"), default="finvault-v5-fixed-full"
+    )
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
-    parser.add_argument("--reviewed-groups-file", type=Path, required=True)
+    parser.add_argument("--reviewed-groups-file", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--per-fold", type=int, default=3)
     args = parser.parse_args()
     if args.per_fold < 1:
         parser.error("--per-fold must be positive")
+    if args.dataset == "finvault-v5-fixed-full" and not args.reviewed_groups_file:
+        parser.error("FinVault gate preparation requires --reviewed-groups-file")
+    if args.dataset == "cnfinbench-pooled" and args.reviewed_groups_file:
+        parser.error("CNFinBench gate preparation does not use a reviewed-groups file")
     if args.output_dir.exists() and any(args.output_dir.iterdir()):
         parser.error("output directory must be empty to protect existing review data")
 
-    adapter = finvault_adapter(args.data_dir)
+    adapter = (
+        finvault_adapter(args.data_dir)
+        if args.dataset == "finvault-v5-fixed-full"
+        else cnfinbench_adapter(args.data_dir)
+    )
     cases = tuple(adapter.cases())
-    groups = _load_reviewed_groups(
-        args.reviewed_groups_file,
-        DATASET_KEY,
-        adapter.data_path,
-        adapter.metadata_path,
-        cases,
+    groups = (
+        _load_reviewed_groups(
+            args.reviewed_groups_file,
+            args.dataset,
+            adapter.data_path,
+            adapter.metadata_path,
+            cases,
+        )
+        if args.reviewed_groups_file
+        else set()
     )
     eligible_cases = tuple(case for case in cases if benchmark_group_id(case) not in groups)
     fold_by_id = {assignment.case_id: assignment.fold for assignment in assign_nonfinal_cross_validation_folds(cases)}
@@ -128,7 +142,7 @@ def main() -> None:
     cases_by_id = {case.case_id: case for case in eligible_cases}
     dataset_sha256 = inspect_json_dataset(adapter.data_path).sha256
     metadata_sha256 = _sha256(adapter.metadata_path)
-    reviewed_groups_sha256 = _sha256(args.reviewed_groups_file)
+    reviewed_groups_sha256 = _sha256(args.reviewed_groups_file) if args.reviewed_groups_file else None
 
     artifacts_by_fold: dict[int, tuple[ExperimentManifest, tuple[EvaluationRecord, ...]]] = {}
     for path in args.artifacts:
@@ -138,7 +152,7 @@ def main() -> None:
         if fold not in expected_by_fold or fold in artifacts_by_fold:
             raise ValueError("artifacts must contain CV folds 0, 1, 2, and 3 exactly once")
         if (
-            manifest.dataset_key != DATASET_KEY
+            manifest.dataset_key != args.dataset
             or manifest.dataset_sha256 != dataset_sha256
             or manifest.metadata_sha256 != metadata_sha256
             or manifest.reviewed_groups_sha256 != reviewed_groups_sha256
@@ -157,7 +171,7 @@ def main() -> None:
         if len(records) != manifest.expected_records:
             raise ValueError(f"fold {fold} record count does not match its manifest")
         if any(
-            record.dataset_key != DATASET_KEY
+            record.dataset_key != args.dataset
             or record.backend != manifest.backend
             or record.judge_mode != "v3_rules_first_cascade"
             or record.input_view != "v3_clean"
@@ -184,7 +198,7 @@ def main() -> None:
     total_replay = 0
     for fold in range(4):
         manifest, replay_ids, checkpoint_records = gate_records[fold]
-        stem = f"finvault-v3-cv{fold}-outcome-gate"
+        stem = f"{args.dataset}-cv{fold}-outcome-gate"
         checkpoint_path = args.output_dir / f"{stem}.checkpoint.jsonl"
         case_ids_path = args.output_dir / f"{stem}.case-ids.txt"
         write_private_text(checkpoint_path, "".join(record.model_dump_json() + "\n" for record in checkpoint_records))

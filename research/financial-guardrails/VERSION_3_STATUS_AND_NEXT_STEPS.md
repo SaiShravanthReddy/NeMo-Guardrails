@@ -2,13 +2,12 @@
 
 ## Current status
 
-Version 3 is implemented and its current candidate has completed non-final
-four-fold cross-validation on FinVault. CNFinBench Version 3 cross-validation
-jobs have been submitted for both Version 2 and Version 3 and are currently
-running; their outputs are not yet verified. Until they finish and pass
-artifact checks, the two-dataset evaluation is incomplete. The FinVault result
-is a useful diagnostic, but it is **not a qualifying replacement for Version
-1** and must not be evaluated on the held-out final split.
+Version 3 is implemented and has completed non-final four-fold cross-validation
+on FinVault and CNFinBench. CNFinBench V3 attack-success score coverage is
+incomplete, so its outcome metrics cannot yet be reported. The two-dataset
+evaluation remains incomplete. These results are diagnostic; V3 is **not a
+qualifying replacement for Version 1** and must not be evaluated on the
+held-out final split.
 
 The evaluated candidate is commit `3cfc1c7f2`. It used static, cleaned
 conversation inputs only: benchmark labels, attack-success annotations, and
@@ -23,10 +22,9 @@ guardrail.
 - Fresh non-final grouped CV: 405/405 records completed, with zero detector
   errors, complete threat-score coverage, and matching judge-attempt/backend
   call telemetry.
-- Dataset coverage: FinVault CV is complete. Four-fold CNFinBench V2 and V3
-  jobs are running; evaluate their artifacts separately after they finish.
-  Every candidate evaluation should cover both datasets and report them
-  separately.
+- Dataset coverage: four-fold CV artifacts are available for FinVault and for
+  CNFinBench V2 and V3. Report each dataset and version separately. Every
+  candidate evaluation should cover both datasets.
 - Content-free review packet and reviewed-source-group exclusion. The review
   is exploratory development evidence; it is not independent final evidence.
 
@@ -52,6 +50,26 @@ Therefore:
 1. Freeze these artifacts as a **non-qualifying Version 3 diagnostic**.
 2. Do not tune thresholds, prompts, or policies against these same CV folds.
 3. Do not run the final held-out split for this candidate.
+
+## CNFinBench Version 2 and Version 3 results
+
+The non-final CNFinBench V2 folds have full attack-attempt and attack-success
+score coverage. V2 attack-attempt F1 averaged 84.4% across folds, with 9.7% FPR;
+attack-success AUROC was about 52% and AUPRC 46.0%.
+
+The CNFinBench V3 folds completed, but the attack-attempt intervention endpoint
+had 99.2% to 100% coverage and 75.4% to 79.7% FPR. V3 threat-assessment F1
+averaged 71.3%, with 75.3% mean FPR. Threat AUROC/AUPRC were available for only
+two of four folds. V3 attack-success scores covered 35/253 eligible cases
+(13.8%); the attack-success metrics are therefore unavailable. The artifacts
+report 463 outcome-score errors across the 514 conversations and two attempt-
+detector errors.
+
+These figures show an attack-attempt versus false-positive tradeoff and weak
+V2 attack-success ranking. Do not treat V2/V3 differences as a clean causal
+comparison: V2 used `legacy_raw` input, while V3 used `v3_clean`, and V3 reports
+threat assessment separately from intervention. Keep the fold reports and
+protocol differences visible.
 
 ## Required closure and correctness work
 
@@ -116,8 +134,10 @@ folds. It does not alter or replace the evaluated candidate at commit
 
 ## HPG decision
 
-The four-fold CNFinBench V2 and V3 jobs have already been submitted. Do not
-submit duplicates. After they finish, validate each artifact's fold membership,
-coverage, detector errors, score coverage, and telemetry; keep dataset and
-version results separate. Do not run the held-out final split. Any new
+CNFinBench V2 and V3 fold artifacts have been reported and validated. Do not
+submit duplicate CV jobs. Next run a 12-case outcome-score diagnostic gate on
+CNFinBench V3 and FinVault V3, three eligible missing-score cases per fold.
+Record content-free failure categories and verify score coverage and backend
+telemetry. Proceed to broader outcome-score recovery only if the small gate
+shows the errors are recoverable. Do not run the held-out final split. Any new
 candidate must pass a small reliability gate before grouped CV.
