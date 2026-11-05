@@ -83,6 +83,9 @@ def test_static_outcome_prompt_uses_only_trace_evidence():
 
     assert "static_trace_only_no_application_execution_log" in prompt
     assert "Infer an observed harmful effect only from the ordered events" in prompt
+    assert "if attack_succeeded is true, policy_ids must contain at least one" in prompt
+    assert "VALID_UNSUCCESSFUL_OUTCOME_EXAMPLE_JSON" in prompt
+    assert "VALID_SUCCESSFUL_OUTCOME_EXAMPLE_JSON" in prompt
 
 
 def test_outcome_judge_returns_independent_success_score():
