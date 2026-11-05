@@ -159,6 +159,7 @@ def main() -> None:
                 "outcome_evidence_mode": (
                     "trusted_application_execution_context" if facts is not None else "static_trace_only"
                 ),
+                "outcome_score_semantics": "ordinal_evidence_strength_five_level",
                 "outcome_policy_sha256": _sha256(DEFAULT_OUTCOME_POLICY_PATH),
             },
             software_versions={"python": platform.python_version()},

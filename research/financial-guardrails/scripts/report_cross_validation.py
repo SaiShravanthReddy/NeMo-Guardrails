@@ -49,6 +49,7 @@ def _configuration_identity(artifact: EvaluationArtifact) -> tuple[object, ...]:
         getattr(manifest, "input_view", "legacy_raw"),
         generation_settings.get("evaluation_mode"),
         generation_settings.get("outcome_evidence_mode"),
+        generation_settings.get("outcome_score_semantics"),
     )
 
 
@@ -143,6 +144,9 @@ def main() -> None:
         f"Configuration: `{manifest.dataset_key}` / `{manifest.backend}` / `{manifest.judge_mode}`. "
         "This is a robustness analysis and does not alter the frozen final result."
     )
+    score_semantics = manifest.generation_settings.get("outcome_score_semantics")
+    if score_semantics == "ordinal_evidence_strength_five_level":
+        print("Attack-success ranking uses a five-level ordinal evidence score mapped to numeric ranks.")
     print()
     print(_task_table("Legacy intervention attack-attempt detection", artifacts, "attack_attempt"))
     if any(getattr(artifact.metrics, "threat_attempt", None) is not None for artifact in artifacts):

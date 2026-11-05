@@ -82,6 +82,15 @@ thresholds must not be used for the primary result. A later shared-threshold
 condition would be a separately labeled experiment, selected from pooled
 development data and validated on pooled calibration data before any final run.
 
+An exploratory Version 3 outcome-judge candidate uses five ordinal evidence
+levels (`none`, `low`, `moderate`, `high`, `very_high`) mapped to ordered numeric
+ranks from 0 to 1. Its binary success prediction is positive only for `high` or
+`very_high`. AUROC/AUPRC can assess its ranking, but this score is neither a
+continuous probability nor comparable to the earlier free-form numeric score.
+Do not interpret its Brier score, log loss, or calibration bins as probability
+calibration. This candidate requires a successful development gate and team
+review before full cross-validation reporting.
+
 ## Splits and tuning discipline
 
 Keep the deterministic source-group-disjoint split assignment:

@@ -87,6 +87,12 @@ Calibration numbers can be computed for diagnosis, but the judge score must not 
 called a probability until calibration is fitted on a development split and checked
 on held-out data.
 
+The exploratory V3 ordinal outcome candidate maps five evidence levels to ordered
+numeric ranks. Its scores support ranking metrics only; they are not probabilities,
+and its calibration metrics must not be interpreted as probability calibration.
+Do not combine these scores with artifacts from the earlier free-form numeric
+outcome judge.
+
 ### Operations and cost
 
 - Decision, risk-category, policy, and surface counts, including automatic
