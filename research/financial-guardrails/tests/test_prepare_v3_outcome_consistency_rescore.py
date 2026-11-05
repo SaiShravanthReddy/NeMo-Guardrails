@@ -20,7 +20,11 @@ import pytest
 from financial_guardrails.datasets import BenchmarkCase, BenchmarkMessage
 from financial_guardrails.evaluation import EvaluationRecord
 from financial_guardrails.schema import Decision
-from scripts.prepare_v3_outcome_consistency_rescore import checkpoint_records, prior_scored_ids
+from scripts.prepare_v3_outcome_consistency_rescore import (
+    checkpoint_records,
+    prior_scored_ids,
+    record_configuration_is_valid,
+)
 
 
 def _case(case_id: str, *, attack_success: bool | None = True) -> BenchmarkCase:
@@ -92,3 +96,14 @@ def test_checkpoint_records_retain_every_nonselected_repaired_case():
 def test_checkpoint_records_rejects_ids_not_in_repaired_artifact():
     with pytest.raises(ValueError, match="does not match"):
         checkpoint_records((_record("present", 0.8),), {"absent"})
+
+
+def test_legacy_score_mode_is_accepted_only_for_original_records():
+    record = _record("historical", 0.8).model_copy(update={"outcome_score_mode": "enforcement_only"})
+
+    assert record_configuration_is_valid(
+        record, dataset="cnfinbench-pooled", backend="hipergator", original_artifact=True
+    )
+    assert not record_configuration_is_valid(
+        record, dataset="cnfinbench-pooled", backend="hipergator", original_artifact=False
+    )

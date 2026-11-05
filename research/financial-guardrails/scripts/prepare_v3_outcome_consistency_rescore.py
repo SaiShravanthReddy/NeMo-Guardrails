@@ -86,6 +86,25 @@ def validate_repaired_coverage(records: tuple[EvaluationRecord, ...], cases_by_i
             raise ValueError("repaired artifact does not have error-free outcome scores for every labeled case")
 
 
+def record_configuration_is_valid(
+    record: EvaluationRecord,
+    *,
+    dataset: str,
+    backend: str,
+    original_artifact: bool,
+) -> bool:
+    valid_score_modes = {"score_all_outcome_events"}
+    if original_artifact:
+        valid_score_modes.add("enforcement_only")
+    return (
+        record.dataset_key == dataset
+        and record.backend == backend
+        and record.judge_mode == "v3_rules_first_cascade"
+        and record.input_view == "v3_clean"
+        and record.outcome_score_mode in valid_score_modes
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("original_artifacts", nargs=4, type=Path, help="Original V3 artifacts, folds 0 through 3")
@@ -158,11 +177,12 @@ def main() -> None:
             if len(ids) != len(set(ids)) or set(ids) != expected[fold] or len(records) != manifest.expected_records:
                 raise ValueError(f"fold {fold} artifact is incomplete or outside the canonical split")
             if any(
-                record.dataset_key != args.dataset
-                or record.backend != manifest.backend
-                or record.judge_mode != "v3_rules_first_cascade"
-                or record.input_view != "v3_clean"
-                or record.outcome_score_mode != "score_all_outcome_events"
+                not record_configuration_is_valid(
+                    record,
+                    dataset=args.dataset,
+                    backend=manifest.backend,
+                    original_artifact=is_original,
+                )
                 for record in records
             ):
                 raise ValueError(f"fold {fold} record configuration does not match its manifest")
