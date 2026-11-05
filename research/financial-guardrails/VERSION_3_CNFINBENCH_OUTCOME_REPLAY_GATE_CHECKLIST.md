@@ -37,9 +37,11 @@ branch is pulled. Work from
    outcome-score errors, and matching logical judge-attempt/backend-call
    telemetry. Inspect aggregate outcome failure-code counts only. Report
    attempt-detector errors separately.
-5. If the gate passes, prepare a targeted full repair of the remaining
-   eligible missing-score cases. If it fails, diagnose the recorded failure
-   categories before any broader replay.
+5. If the gate passes, prepare a full repair from the latest four gate-result
+   artifacts using `--all-missing` and a fresh output directory. This selects
+   every labeled case with a missing score and usable outcome events, including
+   cases whose separate attack-attempt prediction failed. If it fails,
+   diagnose the recorded failure categories before any broader replay.
 
 ## Interpretation
 
