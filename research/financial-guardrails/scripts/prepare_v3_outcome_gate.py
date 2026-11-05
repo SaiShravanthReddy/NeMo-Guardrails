@@ -43,23 +43,17 @@ def select_replay_ids(
     records: Sequence[EvaluationRecord],
     cases_by_id: dict[str, BenchmarkCase],
     *,
-    per_fold: int = 3,
+    per_fold: int | None = 3,
 ) -> tuple[str, ...]:
-    """Choose a reproducible, content-free sample of outcome-score failures."""
+    """Choose reproducible cases with labeled outcomes and missing scores."""
 
-    if per_fold < 1:
+    if per_fold is not None and per_fold < 1:
         raise ValueError("per-fold replay count must be positive")
     candidates = []
     for record in records:
         case = cases_by_id.get(record.case_id)
         label = case.metadata.get("evaluation", {}).get("attack_success") if case else None
-        if (
-            case is None
-            or type(label) is not bool
-            or record.prediction is None
-            or record.attack_success_risk_score is not None
-            or not (record.outcome_score_detector_error or record.attack_success_detector_error)
-        ):
+        if case is None or type(label) is not bool or record.attack_success_risk_score is not None:
             continue
         has_outcome_events = any(
             event_from_message(case, message, input_view="v3_clean").surface in OUTCOME_SURFACES
@@ -67,9 +61,8 @@ def select_replay_ids(
         )
         if has_outcome_events:
             candidates.append(record.case_id)
-    return tuple(
-        sorted(candidates, key=lambda case_id: (hashlib.sha256(case_id.encode()).digest(), case_id))[:per_fold]
-    )
+    ordered = sorted(candidates, key=lambda case_id: (hashlib.sha256(case_id.encode()).digest(), case_id))
+    return tuple(ordered if per_fold is None else ordered[:per_fold])
 
 
 def retained_checkpoint_records(
@@ -106,9 +99,11 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--reviewed-groups-file", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--per-fold", type=int, default=3)
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--per-fold", type=int, default=3)
+    selection.add_argument("--all-missing", action="store_true")
     args = parser.parse_args()
-    if args.per_fold < 1:
+    if not args.all_missing and args.per_fold < 1:
         parser.error("--per-fold must be positive")
     if args.dataset == "finvault-v5-fixed-full" and not args.reviewed_groups_file:
         parser.error("FinVault gate preparation requires --reviewed-groups-file")
@@ -187,8 +182,10 @@ def main() -> None:
     gate_records = {}
     for fold in range(4):
         manifest, records = artifacts_by_fold[fold]
-        replay_ids = select_replay_ids(records, cases_by_id, per_fold=args.per_fold)
-        if len(replay_ids) != args.per_fold:
+        replay_ids = select_replay_ids(records, cases_by_id, per_fold=None if args.all_missing else args.per_fold)
+        if not replay_ids:
+            raise ValueError(f"fold {fold} has no eligible missing outcome scores")
+        if not args.all_missing and len(replay_ids) != args.per_fold:
             raise ValueError(f"fold {fold} has fewer than {args.per_fold} eligible replay candidates")
         checkpoint_records = retained_checkpoint_records(records, set(replay_ids))
         gate_records[fold] = (manifest, replay_ids, checkpoint_records)

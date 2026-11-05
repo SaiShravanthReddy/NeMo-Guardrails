@@ -52,9 +52,12 @@ Run these steps from
    matching judge attempt/backend-call telemetry. Check attempt-detector
    errors separately; they are not the outcome-score gate. Inspect only
    aggregate outcome failure-code counts.
-5. If the gate passes, prepare a full repair for remaining eligible cases with
-   missing scores. If it fails, use the error-code counts to diagnose first;
-   do not launch the full replay until the cause is understood.
+5. If the gate passes, prepare a full repair from the latest four gate-result
+   artifacts using `--all-missing` and a fresh output directory. This selects
+   every labeled case with a missing score and usable outcome events, including
+   cases whose separate attack-attempt prediction failed. If it fails, use the
+   error-code counts to diagnose first; do not launch the full replay until the
+   cause is understood.
 
 ## Interpretation
 

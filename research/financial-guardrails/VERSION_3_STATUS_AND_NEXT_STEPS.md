@@ -41,14 +41,19 @@ Attack-success score coverage was 135/405 pooled (33.3%; 15.7% to 66.7% by
 fold), so attack-success F1, AUROC, and AUPRC are unavailable. A later
 content-free audit found that all 405 eligible cases had output or tool events;
 the 270 missing scores were marked as outcome-judge errors, not absent event
-evidence. The artifacts do not retain the specific error causes, so replay
-recovery remains unconfirmed. Static traces also do not establish real
-authorization, confirmation, or execution.
+evidence. A fresh 12-case diagnostic gate after clarifying the outcome/policy
+consistency contract scored all 12 selected cases in both CNFinBench and
+FinVault, with zero outcome-score errors and matching judge-call telemetry.
+This shows that the sampled cases can be rescored, but full score coverage is
+still pending. Static traces also do not establish real authorization,
+confirmation, or execution.
 
 Therefore:
 
 1. Freeze these artifacts as a **non-qualifying Version 3 diagnostic**.
-2. Do not tune thresholds, prompts, or policies against these same CV folds.
+2. Keep the original artifacts frozen. The outcome-prompt clarification was a
+   schema-consistency repair after the diagnostic gate; any post-repair CV
+   metrics are exploratory and do not replace held-out evidence.
 3. Do not run the final held-out split for this candidate.
 
 ## CNFinBench Version 2 and Version 3 results
@@ -111,6 +116,7 @@ folds. It does not alter or replace the evaluated candidate at commit
 | CV fold provenance | Reporter now requires matching code, reviewed-group, dataset, and metadata hashes. | Commit `a3bb06821`; 8 focused tests and pre-commit passed. |
 | Historical HPG artifact manifests | Audited from the supplied content-free output. | V1/V3 inputs are not matched; final V3 folds share provenance; all 405 final V3 records mismatch their manifest score mode. |
 | V3 outcome-score coverage causes | Audited from four final FinVault V3 artifacts. | 135/405 scores present; 270 missing scores flagged as outcome-judge errors; zero cases lacked outcome events; error causes unavailable. |
+| Outcome-judge response consistency | Added an explicit relationship between the success flag and policy IDs, with valid success/failure examples. | Commit `a99f800ac`; 24 focused tests and pre-commit passed; fresh diagnostic gates scored 12/12 cases on both datasets with zero outcome-score errors and matching telemetry. |
 | Policy/category mismatch behavior | Disclosed as a mismatch with the frozen one-repair-then-fail-closed contract. | Do not claim this behavior is implemented for the evaluated candidate. |
 | Human-review blinding | Disclosed as limited by the original packet defect. | The corrected packet cannot undo earlier exposure; review remains exploratory evidence. |
 
@@ -135,9 +141,10 @@ folds. It does not alter or replace the evaluated candidate at commit
 ## HPG decision
 
 CNFinBench V2 and V3 fold artifacts have been reported and validated. Do not
-submit duplicate CV jobs. Next run a 12-case outcome-score diagnostic gate on
-CNFinBench V3 and FinVault V3, three eligible missing-score cases per fold.
-Record content-free failure categories and verify score coverage and backend
-telemetry. Proceed to broader outcome-score recovery only if the small gate
-shows the errors are recoverable. Do not run the held-out final split. Any new
-candidate must pass a small reliability gate before grouped CV.
+submit duplicate CV jobs. The 12-case outcome-score diagnostic gates now pass
+on both datasets. Next prepare full missing-score repairs from the fresh gate
+artifacts, including labeled cases with attempt-detector errors, and run the
+four folds per dataset. Verify outcome-score coverage, errors, and judge-call
+telemetry before reporting attack-success metrics. Do not run the held-out
+final split. Any new candidate must pass a small reliability gate before
+grouped CV.

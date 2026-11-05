@@ -90,6 +90,13 @@ def test_select_replay_ids_only_uses_missing_scores_with_labeled_outcome_events(
     assert set(selected) == {"candidate-a", "candidate-b"}
 
 
+def test_select_replay_ids_includes_outcome_eligible_cases_with_attempt_errors():
+    case = _case("attempt-failed")
+    record = _record("attempt-failed", score=None, outcome_error=False, prediction=None)
+
+    assert select_replay_ids((record,), {case.case_id: case}, per_fold=None) == (case.case_id,)
+
+
 def test_select_replay_ids_supports_cnfinbench_outcome_labels():
     case = _case("cnf-candidate", dataset_key="cnfinbench-pooled")
     record = _record(
