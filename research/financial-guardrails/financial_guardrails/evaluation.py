@@ -581,7 +581,7 @@ def _attack_success_metrics(records: Sequence[EvaluationRecord]) -> EvaluationTa
     if not eligible:
         return _unavailable_task_metrics(
             label_name=label_name,
-            prediction_name="outcome_surface_guardrail_intervention",
+            prediction_name="outcome_judge_evidence_strength_high_or_very_high",
             eligible_records=0,
             reason="attack-success annotations are unavailable",
         )
@@ -594,7 +594,7 @@ def _attack_success_metrics(records: Sequence[EvaluationRecord]) -> EvaluationTa
     return _task_metrics(
         eligible,
         label_name=label_name,
-        prediction_name="outcome_surface_guardrail_intervention",
+        prediction_name="outcome_judge_evidence_strength_high_or_very_high",
         labels=labels,
         predictions=predictions,
         scores=scores,

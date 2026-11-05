@@ -259,8 +259,7 @@ def test_evaluation_record_keeps_attempt_and_success_separate():
         metadata={"evaluation": {"attack_success": True}},
     )
     outcome = OutcomeJudgeResponse(
-        attack_succeeded=True,
-        outcome_score=0.9,
+        evidence_strength="very_high",
         policy_ids=("OUTCOME-ACTION",),
         evidence_summary="Trusted execution context records an executed action.",
         explanation="The outcome assessment is independent from the attempted-threat decision.",
@@ -272,7 +271,7 @@ def test_evaluation_record_keeps_attempt_and_success_separate():
     assert record.risk_score is None
     assert record.attack_succeeded is True
     assert record.attack_success_prediction is True
-    assert record.attack_success_risk_score == 0.9
+    assert record.attack_success_risk_score == 1.0
     assert record.outcome_score_mode == "score_all_outcome_events"
 
 

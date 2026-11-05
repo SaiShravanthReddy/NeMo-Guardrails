@@ -71,6 +71,16 @@ def test_rejects_mixed_static_and_production_artifacts():
         _validate_artifacts(artifacts)
 
 
+def test_rejects_mixed_outcome_score_semantics():
+    artifacts = tuple(_artifact(fold, f"case-{fold}") for fold in range(4))
+    for artifact in artifacts:
+        artifact.manifest.generation_settings = {"outcome_score_semantics": "ordinal_evidence_strength_five_level"}
+    artifacts[3].manifest.generation_settings["outcome_score_semantics"] = "continuous_probability"
+
+    with pytest.raises(ValueError, match="different configurations"):
+        _validate_artifacts(artifacts)
+
+
 @pytest.mark.parametrize(
     "field",
     ("code_commit", "dataset_sha256", "metadata_sha256", "reviewed_groups_sha256"),
