@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 
 from financial_guardrails.datasets import BenchmarkCase, cnfinbench_adapter, finvault_adapter, inspect_json_dataset
@@ -74,6 +75,14 @@ def checkpoint_records(records: tuple[EvaluationRecord, ...], replay_ids: set[st
     return retained
 
 
+def sample_rescore_ids(case_ids: tuple[str, ...], per_fold: int | None) -> tuple[str, ...]:
+    if per_fold is None:
+        return case_ids
+    if per_fold < 1 or len(case_ids) < per_fold:
+        raise ValueError("fold has fewer than the requested eligible cases to sample")
+    return tuple(sorted(case_ids, key=lambda case_id: (hashlib.sha256(case_id.encode()).digest(), case_id))[:per_fold])
+
+
 def validate_repaired_coverage(records: tuple[EvaluationRecord, ...], cases_by_id: dict[str, BenchmarkCase]) -> None:
     for record in records:
         case = cases_by_id.get(record.case_id)
@@ -113,7 +122,10 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--reviewed-groups-file", type=Path)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--per-fold", type=int, help="Deterministically sample this many eligible cases per fold")
     args = parser.parse_args()
+    if args.per_fold is not None and args.per_fold < 1:
+        parser.error("--per-fold must be positive")
     if args.dataset == "finvault-v5-fixed-full" and not args.reviewed_groups_file:
         parser.error("FinVault requires --reviewed-groups-file")
     if args.dataset == "cnfinbench-pooled" and args.reviewed_groups_file:
@@ -208,6 +220,11 @@ def main() -> None:
         ids = prior_scored_ids(original, repaired, eligible)
         if not ids:
             raise ValueError(f"fold {fold} has no previously scored outcomes to rescore")
+        if args.per_fold is not None:
+            try:
+                ids = sample_rescore_ids(ids, args.per_fold)
+            except ValueError as exc:
+                raise ValueError(f"fold {fold} has fewer than {args.per_fold} eligible cases to sample") from exc
         retained = checkpoint_records(repaired, set(ids))
         stem = f"{args.dataset}-cv{fold}-outcome-consistency-rescore"
         write_private_text(

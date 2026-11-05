@@ -24,6 +24,7 @@ from scripts.prepare_v3_outcome_consistency_rescore import (
     checkpoint_records,
     prior_scored_ids,
     record_configuration_is_valid,
+    sample_rescore_ids,
 )
 
 
@@ -107,3 +108,13 @@ def test_legacy_score_mode_is_accepted_only_for_original_records():
     assert not record_configuration_is_valid(
         record, dataset="cnfinbench-pooled", backend="hipergator", original_artifact=False
     )
+
+
+def test_rescore_sample_is_deterministic_and_respects_requested_size():
+    case_ids = ("case-a", "case-b", "case-c", "case-d")
+
+    assert sample_rescore_ids(case_ids, 2) == sample_rescore_ids(case_ids, 2)
+    assert len(sample_rescore_ids(case_ids, 2)) == 2
+    assert sample_rescore_ids(case_ids, None) == case_ids
+    with pytest.raises(ValueError, match="fewer than the requested"):
+        sample_rescore_ids(case_ids, 5)
