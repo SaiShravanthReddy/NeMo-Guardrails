@@ -25,6 +25,10 @@ branch is pulled. Work from
    total. The preparer verifies fold membership, data and metadata checksums,
    model/policy/code consistency, labeled missing-score eligibility, and usable
    outcome events. It writes private files and refuses non-empty output dirs.
+   **Each checkpoint is mutable resume state:** the evaluation runner appends
+   replayed records to it. Do not reuse a checkpoint after a job has consumed
+   it; prepare a fresh gate directory from the original CV artifacts for every
+   diagnostic rerun.
 3. Submit one `slurm/run-v3-evaluation.sbatch` job per fold with
    `DATASET=cnfinbench-pooled`, `SPLIT=all`, the matching `CV_FOLD`, that fold's
    `.checkpoint.jsonl` as `CHECKPOINT`, and

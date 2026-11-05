@@ -38,6 +38,10 @@ Run these steps from
    It should report three replay cases and a retained checkpoint for each fold,
    for 12 replay cases total. It refuses mismatched provenance, incomplete
    folds, insufficient eligible candidates, or non-empty output directories.
+   **Each checkpoint is mutable resume state:** the evaluation runner appends
+   replayed records to it. Do not reuse a checkpoint after a job has consumed
+   it; prepare a fresh gate directory from the original CV artifacts for every
+   diagnostic rerun.
 3. Submit one `slurm/run-v3-evaluation.sbatch` job per fold with:
    `DATASET=finvault-v5-fixed-full`, `SPLIT=all`, the matching `CV_FOLD`, the
    reviewed-groups file above, that fold's `.checkpoint.jsonl` as `CHECKPOINT`,
