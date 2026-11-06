@@ -48,8 +48,8 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    baseline_artifact = _read_baseline_artifact(args.baseline)
-    candidate_artifact = read_evaluation_artifact(args.candidate)
+    baseline_artifact = _read_artifact_records(args.baseline)
+    candidate_artifact = _read_artifact_records(args.candidate)
     dataset_key = baseline_artifact.manifest.dataset_key
     if dataset_key != candidate_artifact.manifest.dataset_key:
         parser.error("artifacts must use the same dataset")
@@ -124,8 +124,8 @@ def _attach_source_groups(
     return tuple(enriched)
 
 
-def _read_baseline_artifact(path: Path) -> _ArtifactRecords:
-    """Load a historical baseline without trusting stale derived metric summaries."""
+def _read_artifact_records(path: Path) -> _ArtifactRecords:
+    """Load validated records without trusting stale derived metric summaries."""
 
     try:
         artifact = read_evaluation_artifact(path)

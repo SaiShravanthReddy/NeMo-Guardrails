@@ -16,12 +16,20 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import json
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 from financial_guardrails.datasets import BenchmarkCase
-from financial_guardrails.evaluation import EvaluationRecord
-from scripts.report_v3_selection import _attach_source_groups, _matched_records, _validate_artifact_dataset
+from financial_guardrails.evaluation import EvaluationRecord, summarize_records
+from financial_guardrails.results import EvaluationArtifact, ExperimentManifest
+from scripts.report_v3_selection import (
+    _attach_source_groups,
+    _matched_records,
+    _read_artifact_records,
+    _validate_artifact_dataset,
+)
 
 
 def _case(case_id, scenario_id):
@@ -73,3 +81,41 @@ def test_selection_report_rejects_wrong_canonical_dataset_checksums(tmp_path):
 
     with pytest.raises(ValueError, match="data checksum"):
         _validate_artifact_dataset(artifact, adapter)
+
+
+def test_selection_report_recomputes_stale_artifact_metrics_from_valid_records(tmp_path):
+    case_records = (_record("case-a", True), _record("case-b", False))
+    started = datetime(2026, 11, 1, tzinfo=UTC)
+    manifest = ExperimentManifest(
+        run_id="fixture-run",
+        started_at=started,
+        completed_at=started + timedelta(seconds=1),
+        code_commit="abcdef1",
+        dataset_key="finvault-v5-fixed-full",
+        dataset_sha256="a" * 64,
+        metadata_sha256="b" * 64,
+        expected_records=2,
+        policy_id="fixture-policy",
+        policy_version="1.0.0",
+        policy_sha256="c" * 64,
+        judge_policy_sha256="d" * 64,
+        backend="fixture",
+        model_id="fixture-model",
+        judge_mode="rules_only",
+        positive_label=1,
+    )
+    artifact = EvaluationArtifact(
+        manifest=manifest,
+        records=case_records,
+        metrics=summarize_records(case_records, run_elapsed_seconds=1),
+        confidence_intervals={},
+    )
+    payload = artifact.model_dump(mode="json")
+    payload["metrics"]["binary"]["accuracy"] = 0.0
+    path = tmp_path / "stale-metrics.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    loaded = _read_artifact_records(path)
+
+    assert loaded.manifest == manifest
+    assert loaded.records == case_records
